@@ -1,0 +1,6 @@
+.pio
+.vscode
+*.sublime*
+sdcard/books
+sdcard/library
+media/archive
