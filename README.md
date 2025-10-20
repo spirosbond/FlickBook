@@ -1,6 +1,6 @@
-# InkBook: DIY Open-Source eBook Reader with InkPlate 6 Flick
+# FlickBook: DIY Open-Source eBook Reader with InkPlate 6 Flick
 
-I would like to introduce you to InkBook! Build your own fully-featured eBook reader from scratch using an InkPlate 6 Flick development board. This project delivers native EPUB parsing, gesture-based navigation, battery-powered operation, and complete library management - all with open-source hardware and software!
+I would like to introduce you to FlickBook! Build your own fully-featured eBook reader from scratch using an InkPlate 6 Flick development board. This project delivers native EPUB parsing, gesture-based navigation, battery-powered operation, and complete library management - all with open-source hardware and software!
 
 ## Overall Description and Intent
 
@@ -68,7 +68,7 @@ The project leverages the InkPlate 6 Flick's excellent recycled e-paper displays
 <img src="media/settings-3.png" alt="Settings" width="450"/>
 
 
-### **Navigation Demos:**
+### **Video Demos:**
 
 <img src="media/reading page.gif" alt="Reading Page" width="300"/>
 <img src="media/library.gif" alt="Library" width="300"/>
@@ -202,4 +202,4 @@ Join the growing community of open-source e-reader enthusiasts and help make dig
 
 ---
 
-*Ready to build your own? Get started with your custom InkBook and begin your journey into open-source reading technology!*
+*Ready to build your own? Get started with your custom FlickBook and begin your journey into open-source reading technology!*
