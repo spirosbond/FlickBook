@@ -396,6 +396,24 @@ JsonDocument EpubParser::parseBookMetadataToJson(const char *xml)
         jsonDoc["author"] = creatorElement->GetText();
     }
 
+    // Extract <meta name="cover"...> content
+    tinyxml2::XMLElement *meta = metadata->FirstChildElement("meta");
+    while (meta)
+    {
+        const char *name = meta->Attribute("name");
+
+        if (name)
+        {
+            if (strcmp(name, "cover") == 0)
+            {
+                const char *content = meta->Attribute("content");
+                jsonDoc["cover"] = content;
+                break;
+            }
+        }
+        meta = meta->NextSiblingElement("meta");
+    }
+
     return jsonDoc;
 }
 
@@ -625,6 +643,23 @@ String EpubParser::getPagePath(String book, int page)
 
     return relPath;
 }
+
+String getCoverPath(String book)
+{
+    StaticJsonDocument<4096> manifestDoc = sdHandler.loadJson("/library/" + book + "/manifest.json");
+    StaticJsonDocument<4096> metadata = sdHandler.loadJson("/library/" + book + "/metadata.json");
+    String cover = metadata["cover"];
+    if (cover)
+    {
+
+        return manifestDoc[cover];
+    }
+    else
+    {
+        return "";
+    }
+}
+
 // String EpubParser::extractTextFromXHTML(const char *xhtmlData) {
 //     String text = "";
 //     bool inTag = false;

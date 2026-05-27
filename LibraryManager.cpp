@@ -3,7 +3,8 @@
 // #include <SD.h>
 extern SDHandler sdHandler;
 extern EpubParser epubParser;
-LibraryManager::LibraryManager() : currentBook(""), currentPageString(""), currentPagePath(""), showFinishedBooks(false) {}
+extern SettingsManager settingsManager;
+LibraryManager::LibraryManager() : currentBook(""), currentPageString(""), currentPagePath(""), showFinishedBooks(false), totalBooks(0), finishedBooks(0) {}
 
 void LibraryManager::init()
 {
@@ -49,11 +50,20 @@ void LibraryManager::loadLibrary()
 {
   std::vector<String> folders = sdHandler.listFiles("/library", true);
   library.clear();
+  totalBooks = 0;
+  finishedBooks = 0;
   for (const String &book : folders)
   {
     StaticJsonDocument<4096> ud = sdHandler.loadJson("/library/" + book + "/user.json");
-    library.push_back(bookInfoFromJson(book, ud));
+    BookInfo info = bookInfoFromJson(book, ud);
+    library.push_back(info);
+    totalBooks++;
+    if (info.isFinished)
+    {
+      finishedBooks++;
+    }
   }
+  Serial.println("Finished loadLibrary(). Total: " + String(totalBooks) + " Finished: " + String(finishedBooks));
 }
 
 bool LibraryManager::loadBookUserData()
@@ -143,6 +153,7 @@ void LibraryManager::setCurrentBook(String book)
 bool LibraryManager::loadCurrentBook(String book)
 {
   currentBook = book;
+  settingsManager.setLastBook(book);
   return loadBookUserData();
 }
 bool LibraryManager::initBookUserData()
@@ -447,4 +458,13 @@ bool LibraryManager::initCurrentPageSections()
   }
   Serial.println("Initialized pagesections.json for book: " + currentBook);
   return true;
+}
+
+int LibraryManager::getTotalBook()
+{
+  return totalBooks;
+}
+int LibraryManager::getFinishedBook()
+{
+  return finishedBooks;
 }
