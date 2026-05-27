@@ -3,6 +3,7 @@
 #include "definitions.h"
 #include "SDHandler.h"
 #include "EpubParser.h"
+#include "SettingsManager.h"
 #include <ArduinoJson.h>
 
 struct BookInfo
@@ -50,12 +51,16 @@ public:
     bool loadCurrentPageSections(std::vector<size_t> &sections);
     bool saveCurrentPageSections(std::vector<size_t> sections);
     bool initCurrentPageSections();
+    int getTotalBook();
+    int getFinishedBook();
 
 private:
     String currentBook;
     String currentPageString;
     String currentPagePath;
     StaticJsonDocument<4096> userData;
+    int totalBooks;
+    int finishedBooks;
     std::vector<BookInfo> library;
     bool showFinishedBooks;
     void updateLibraryBookInfo();

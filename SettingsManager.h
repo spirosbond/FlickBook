@@ -34,6 +34,8 @@ public:
     void setWebserver(bool val);
     bool getDarkMode();
     void setDarkMode(bool val);
+    String getLastBook();
+    void setLastBook(String val);
     int getFgColor();
     int getBgColor();
 
@@ -45,5 +47,6 @@ private:
     bool webserver;
     bool darkMode;
     bool o[3] = {1, 1, 1};
+    String lastBook;
 };
 #endif

@@ -19,6 +19,7 @@ public:
     // New overload: stream-extract a slice of page content starting at character index 'startChar' for 'length' characters
     String getPageContent(String book, int page, size_t startChar, size_t length);
     String getPagePath(String book, int page);
+    String getCoverPath(String book);
     void closeEpub();
 
 private:
