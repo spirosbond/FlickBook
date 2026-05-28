@@ -10,6 +10,7 @@ struct BookInfo
 {
     String name;
     String pages;
+    String coverPath;
     int lastPage;
     int lastSection;
     int lastSectionIndex;

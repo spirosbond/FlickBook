@@ -115,10 +115,10 @@ int SettingsManager::getBacklight()
   return backlight;
 }
 
-void SettingsManager::setBacklight(int value, bool apply)
+void SettingsManager::setBacklight(uint8_t value, bool apply)
 {
 
-  if (backlight > 0 and backlight < 64)
+  if (value >= BACKLIGHT_L1 and value <= BACKLIGHT_L5)
   {
     backlight = value;
     if (apply)
@@ -131,6 +131,14 @@ void SettingsManager::setBacklight(int value, bool apply)
       display->setFrontlight(backlight);
     }
   }
+  else if (value > BACKLIGHT_L5)
+  {
+    backlight = BACKLIGHT_L5;
+    if (apply)
+    {
+      display->setFrontlight(backlight);
+    }
+  }
   else
   {
     backlight = 0;
@@ -139,6 +147,7 @@ void SettingsManager::setBacklight(int value, bool apply)
       display->setFrontlight(backlight);
     }
   }
+  Serial.printf("Setting Backlight to: %d\n", backlight);
   saveSettings();
 }
 

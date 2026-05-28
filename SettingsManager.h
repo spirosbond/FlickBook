@@ -23,7 +23,7 @@ public:
     void saveSettings();
     // int getFontSize();
     int getBacklight();
-    void setBacklight(int value, bool apply);
+    void setBacklight(uint8_t value, bool apply);
     int incBacklight();
     bool ons(uint8_t i);
     bool ons_c(uint8_t i);

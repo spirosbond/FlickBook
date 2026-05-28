@@ -66,7 +66,7 @@ bool ImageScaler::getScaledDimensions(const char *path, int maxW, int maxH,
     return true;
 }
 
-bool ImageScaler::drawImageFitTo(const char *path, int x, int y, int maxW, int maxH,
+bool ImageScaler::drawImageFitTo(const char *path, int x, int y, int maxW, int maxH, uint8_t align,
                                  bool dither, bool invert)
 {
     int origW, origH;
@@ -77,9 +77,29 @@ bool ImageScaler::drawImageFitTo(const char *path, int x, int y, int maxW, int m
     {
         uint8_t scale = pickBestScaleFactor(origW, origH, maxW, maxH);
         int scaledW = (origW + scale - 1) / scale;
+        int offsetX = 0;
+        switch (align)
+        {
+        case ALIGN_LEFT:
+            // Center horizontally within maxW
+            offsetX = 0;
+            break;
 
-        // Center horizontally within maxW
-        int offsetX = (maxW - scaledW) / 2;
+        case ALIGN_CENTER:
+            // Center horizontally within maxW
+            offsetX = (maxW - scaledW) / 2;
+            break;
+
+        case ALIGN_RIGHT:
+            // Center horizontally within maxW
+            offsetX = (maxW - scaledW);
+            break;
+
+        default:
+            // Center horizontally within maxW
+            offsetX = (maxW - scaledW) / 2;
+            break;
+        }
 
         Serial.printf("[ImageScaler] JPEG %dx%d -> 1/%d = %dx%d\n",
                       origW, origH, scale, scaledW, (origH + scale - 1) / scale);

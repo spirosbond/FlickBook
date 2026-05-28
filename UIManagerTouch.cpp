@@ -42,6 +42,7 @@ void UIManager::handleTouch()
                 isTouchActive = true;
                 touchStartTime = millis();
                 longPressTriggered = false;
+                dragTriggered = false;
                 touchStartX = x[0];
                 touchStartY = y[0];
             }
@@ -49,7 +50,37 @@ void UIManager::handleTouch()
             {
                 // Touch is still active, check for long press
                 unsigned long now = millis();
-                if (!longPressTriggered && (now - touchStartTime > LONG_TOUCH_DUR))
+                int dx = lastTouchX - touchStartX;
+                int dy = lastTouchY - touchStartY;
+                if (abs(dx) > DRAG_THRESHOLD || abs(dy) > DRAG_THRESHOLD)
+                {
+                    // dragTriggered = true;
+                    if (abs(dx) > abs(dy))
+                    {
+                        // Horizontal drag
+                        if (dx > 0)
+                        {
+                            dragTriggered = handleDragLeft(touchStartX, touchStartY, abs(dx), abs(dy));
+                        }
+                        else
+                        {
+                            dragTriggered = handleDragRight(touchStartX, touchStartY, abs(dx), abs(dy));
+                        }
+                    }
+                    else
+                    {
+                        // Vertical drag
+                        if (dy > 0)
+                        {
+                            dragTriggered = handleDragUp(touchStartX, touchStartY, abs(dx), abs(dy));
+                        }
+                        else
+                        {
+                            dragTriggered = handleDragDown(touchStartX, touchStartY, abs(dx), abs(dy));
+                        }
+                    }
+                }
+                else if (!longPressTriggered && (now - touchStartTime > LONG_TOUCH_DUR))
                 {
                     longPressTriggered = true;
                     handleLongTouch(touchStartX, touchStartY);
@@ -67,12 +98,7 @@ void UIManager::handleTouch()
                 int dx = lastTouchX - touchStartX;
                 int dy = lastTouchY - touchStartY;
 
-                if (!longPressTriggered && (now - touchStartTime > LONG_TOUCH_DUR))
-                {
-                    longPressTriggered = true;
-                    handleLongTouch(touchStartX, touchStartY);
-                }
-                else if (!longPressTriggered)
+                if (!longPressTriggered && !dragTriggered)
                 {
                     // Check for swipe
                     if (abs(dx) > SWIPE_THRESHOLD || abs(dy) > SWIPE_THRESHOLD)
@@ -108,6 +134,16 @@ void UIManager::handleTouch()
                         handleShortTouch(touchStartX, touchStartY);
                     }
                 }
+                else if (!longPressTriggered && !dragTriggered && (now - touchStartTime > LONG_TOUCH_DUR))
+                {
+                    longPressTriggered = true;
+                    handleLongTouch(touchStartX, touchStartY);
+                }
+                else if (dragTriggered)
+                {
+                    if (PARTIAL_UPDATE_ALLOWED)
+                        display->partialUpdate();
+                }
 
                 isTouchActive = false;
             }
@@ -122,93 +158,159 @@ void UIManager::handleTouch()
     }
 }
 
-void UIManager::handleShortTouch(uint16_t x, uint16_t y)
+bool UIManager::handleShortTouch(uint16_t x, uint16_t y)
 {
     Serial.printf("Short touch at X=%d Y=%d\n", x, y);
     if (handleTouchMenu(x, y, TOUCH_TYPE_SHORT))
     {
-        // handled
+        return true; // handled
     }
     else if (handleTouchReadingHeader(x, y, TOUCH_TYPE_SHORT))
     {
-        // handled
+        return true; // handled
     }
     else if (handleTouchMainHeader(x, y, TOUCH_TYPE_SHORT))
     {
-        // handled
+        return true; // handled
     }
     else if (handleTouchBookList(x, y, TOUCH_TYPE_SHORT))
     {
-        // handled
+        return true; // handled
     }
     else if (handleTouchSettingsPage(x, y, TOUCH_TYPE_SHORT))
     {
-        // handled
+        return true; // handled
     }
+    return false;
 }
 
-void UIManager::handleLongTouch(uint16_t x, uint16_t y)
+bool UIManager::handleLongTouch(uint16_t x, uint16_t y)
 {
     // For now, just log
     Serial.printf("Long touch at X=%d Y=%d\n", x, y);
     if (handleTouchMenu(x, y, TOUCH_TYPE_LONG))
     {
-        // handled
+        return true; // handled
     }
-    else if (handleTouchReadingHeader(x, y, TOUCH_TYPE_LONG))
-    {
-        // handled
-    }
+    // else if (handleTouchReadingHeader(x, y, TOUCH_TYPE_LONG))
+    // {
+    //     return true; // handled
+    // }
     else if (handleTouchMainHeader(x, y, TOUCH_TYPE_LONG))
     {
-        // handled
+        return true; // handled
     }
     else if (handleTouchBookList(x, y, TOUCH_TYPE_LONG))
     {
-        // handled
+        return true; // handled
     }
+    return false;
 }
 
-void UIManager::handleSwipeLeft(uint16_t x, uint16_t y)
+bool UIManager::handleSwipeLeft(uint16_t x, uint16_t y)
 {
+    Serial.println("Swipe Left");
     if (handleTouchReadingPage(x, y, TOUCH_TYPE_SLEFT))
     {
-        // handled
+        return true; // handled
     }
+    return false;
 }
 
-void UIManager::handleSwipeRight(uint16_t x, uint16_t y)
+bool UIManager::handleSwipeRight(uint16_t x, uint16_t y)
 {
+    Serial.println("Swipe Right");
     if (handleTouchReadingPage(x, y, TOUCH_TYPE_SRIGHT))
     {
-        // handled
+        return true; // handled
     }
+    return false;
 }
 
-void UIManager::handleSwipeUp(uint16_t x, uint16_t y)
+bool UIManager::handleSwipeUp(uint16_t x, uint16_t y)
 {
     Serial.println("Swipe Up");
     if (handleTouchBookList(x, y, TOUCH_TYPE_SUP))
     {
-        // handled
+        return true; // handled
     }
     else if (handleTouchReadingPage(x, y, TOUCH_TYPE_SUP))
     {
-        // handled
+        return true; // handled
     }
+    return false;
 }
 
-void UIManager::handleSwipeDown(uint16_t x, uint16_t y)
+bool UIManager::handleSwipeDown(uint16_t x, uint16_t y)
 {
     Serial.println("Swipe Down");
     if (handleTouchBookList(x, y, TOUCH_TYPE_SDOWN))
     {
-        // handled
+        return true; // handled
     }
     else if (handleTouchReadingPage(x, y, TOUCH_TYPE_SDOWN))
     {
-        // handled
+        return true; // handled
     }
+    return false;
+}
+
+bool UIManager::handleDragLeft(uint16_t x, uint16_t y, uint16_t dx, uint16_t dy)
+{
+    Serial.println("Drag Left");
+    // if (handleTouchBookList(x, y, TOUCH_TYPE_DLEFT))
+    // {
+    //     return true; // handled
+    // }
+    // if (handleTouchReadingPage(x, y, TOUCH_TYPE_SLEFT))
+    // {
+    // handled
+    // }
+    return false;
+}
+
+bool UIManager::handleDragRight(uint16_t x, uint16_t y, uint16_t dx, uint16_t dy)
+{
+    Serial.println("Drag Right");
+    // if (handleTouchBookList(x, y, TOUCH_TYPE_DRIGHT))
+    // {
+    //     return true; // handled
+    // }
+    // if (handleTouchReadingPage(x, y, TOUCH_TYPE_SRIGHT))
+    // {
+    // handled
+    // }
+    return false;
+}
+
+bool UIManager::handleDragUp(uint16_t x, uint16_t y, uint16_t dx, uint16_t dy)
+{
+    Serial.println("Drag Up");
+    if (handleTouchMenu(x, y, TOUCH_TYPE_DUP, dx, dy))
+    {
+
+        return true; // handled
+    }
+    // else if (handleTouchBookList(x, y, TOUCH_TYPE_DUP))
+    // {
+    //     return true; // handled
+    // }
+    return false;
+}
+
+bool UIManager::handleDragDown(uint16_t x, uint16_t y, uint16_t dx, uint16_t dy)
+{
+    Serial.println("Drag Down");
+    if (handleTouchMenu(x, y, TOUCH_TYPE_DDOWN, dx, dy))
+    {
+
+        return true; // handled
+    }
+    // else if (handleTouchBookList(x, y, TOUCH_TYPE_DDOWN))
+    // {
+    //     return true; // handled
+    // }
+    return false;
 }
 
 bool UIManager::handleTouchBookList(uint16_t x, uint16_t y, uint8_t touch_type)
@@ -323,7 +425,7 @@ bool UIManager::handleTouchBookList(uint16_t x, uint16_t y, uint8_t touch_type)
     return false;
 }
 
-bool UIManager::handleTouchMenu(uint16_t x, uint16_t y, uint8_t touch_type)
+bool UIManager::handleTouchMenu(uint16_t x, uint16_t y, uint8_t touch_type, uint16_t dx, uint16_t dy)
 {
     if ((x >= MENU_ITEM_HOME[0]) and (y >= MENU_ITEM_HOME[1]) and (x <= (MENU_ITEM_HOME[0] + MENU_ITEM_SIZE)) and (y <= (MENU_ITEM_HOME[1] + MENU_ITEM_SIZE)))
     {
@@ -377,6 +479,26 @@ bool UIManager::handleTouchMenu(uint16_t x, uint16_t y, uint8_t touch_type)
             renderMenu(true);
             // delay(100);
             // flushTS(50); DONT FLUSH AFTER LONG TOUCH TO ALLOW FINGER RELEASE DETECTION
+            return true;
+        }
+        else if (touch_type == TOUCH_TYPE_DUP)
+        {
+            Serial.println("Drag UP Touched Menu Item: BACKLIGHT dy: " + String(dy));
+            settingsManager.setBacklight(dy / 10, true);
+            drawBacklightIndicator();
+            // renderMenu(true);
+            // delay(100);
+            // flushTS(50); DONT FLUSH AFTER DRAG TOUCH TO ALLOW DX DY DETECTION
+            return true;
+        }
+        else if (touch_type == TOUCH_TYPE_DDOWN)
+        {
+            Serial.println("Drag DOWN Touched Menu Item: BACKLIGHT dy: " + String(dy));
+            settingsManager.setBacklight(dy / 10, true);
+            drawBacklightIndicator();
+            // renderMenu(true);
+            // delay(100);
+            // flushTS(50); DONT FLUSH AFTER DRAG TOUCH TO ALLOW DX DY DETECTION
             return true;
         }
     }

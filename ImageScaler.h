@@ -14,6 +14,10 @@
 #include "SDHandler.h"
 #include "libs/TJpg_Decoder.h"
 
+#define ALIGN_LEFT (0)
+#define ALIGN_CENTER (1)
+#define ALIGN_RIGHT (2)
+
 class ImageScaler
 {
 public:
@@ -25,7 +29,7 @@ public:
      * PNG/BMP images are drawn at original size via the SDK.
      * The image is centered horizontally within maxW.
      */
-    bool drawImageFitTo(const char *path, int x, int y, int maxW, int maxH,
+    bool drawImageFitTo(const char *path, int x, int y, int maxW, int maxH, uint8_t align = ALIGN_CENTER,
                         bool dither = true, bool invert = false);
 
     /**
