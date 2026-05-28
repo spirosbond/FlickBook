@@ -215,6 +215,131 @@ void UIManager::renderBookList(bool partial_update)
     }
 }
 
+void UIManager::renderBookGrid(bool partial_update)
+{
+    std::vector<BookInfo> bookList = libraryManager.getLibrary();
+
+    setFont(FONT_PRIM, FONT_SIZE_LARGE);
+    display->setTextColor(settingsManager.getFgColor());
+    display->setCursor(GRID_TITLE_X, GRID_TITLE_Y);
+    display->print("MY LIBRARY:");
+
+    int totalBooks = (int)bookList.size();
+    int totalRows = (totalBooks + GRID_COLUMNS - 1) / GRID_COLUMNS;
+    int maxScrollRows = max(0, totalRows - GRID_ROWS);
+    int maxScroll = maxScrollRows * GRID_COLUMNS;
+    scrollIndex = constrain(scrollIndex, 0, maxScroll);
+
+    for (int i = 0; i < GRID_MAX_ITEMS && (scrollIndex + i) < totalBooks; i++)
+    {
+        int row = i / GRID_COLUMNS;
+        int col = i % GRID_COLUMNS;
+        int x = GRID_START_X + col * (GRID_ITEM_WIDTH + GRID_PADDING_X);
+        int y = GRID_START_Y + row * (GRID_ITEM_HEIGHT + GRID_PADDING_Y);
+
+        const BookInfo &book = bookList[scrollIndex + i];
+
+        // Render cover image or acronym fallback
+        if (book.coverPath != "null" && book.coverPath.length() > 0 && renderImage("/library/" + book.name + "/" + book.coverPath, x, y, GRID_ITEM_WIDTH, GRID_COVER_HEIGHT, ALIGN_CENTER))
+        {
+        }
+        else
+        {
+            // Draw rectangle placeholder
+            display->drawRect(x, y, GRID_ITEM_WIDTH, GRID_COVER_HEIGHT, settingsManager.getFgColor());
+
+            // Build acronym from title (first letter of each word, uppercased)
+            String acronym = "";
+            String title = book.title.length() > 0 ? book.title : book.name;
+            bool nextIsStart = true;
+            for (unsigned int c = 0; c < title.length(); c++)
+            {
+                char ch = title.charAt(c);
+                if (ch == ' ' || ch == '-' || ch == '_')
+                {
+                    nextIsStart = true;
+                }
+                else if (nextIsStart)
+                {
+                    acronym += (char)toupper(ch);
+                    nextIsStart = false;
+                }
+            }
+
+            setFont(FONT_PRIM, FONT_SIZE_LARGE);
+            if (acronym.length() > 5)
+            {
+                acronym = acronym.substring(0, 5);
+            }
+            int16_t tx, ty;
+            uint16_t tw, th;
+            display->getTextBounds(acronym, 0, 0, &tx, &ty, &tw, &th);
+            display->setCursor(x + (GRID_ITEM_WIDTH - tw) / 2 - tx, y + (GRID_COVER_HEIGHT - th) / 2 - ty);
+            display->print(acronym);
+        }
+
+        // Truncated title
+        String itemTitle = book.title.length() > 0 ? book.title : book.name;
+        if (itemTitle.length() > GRID_TITLE_MAX_CHARS)
+        {
+            itemTitle = itemTitle.substring(0, GRID_TITLE_MAX_CHARS - 3) + "...";
+        }
+        setFont(FONT_PRIM, FONT_SIZE_SMALL);
+        display->setCursor(x, y + GRID_COVER_HEIGHT + 22);
+        display->print(itemTitle);
+
+        // Author (small font)
+        String author = book.author;
+        if (author.length() > GRID_AUTHOR_MAX_CHARS)
+        {
+            author = author.substring(0, GRID_AUTHOR_MAX_CHARS - 3) + "...";
+        }
+        setFont(FONT_PRIM, FONT_SIZE_SMALL);
+        display->setCursor(x, y + GRID_COVER_HEIGHT + 44);
+        display->print(author);
+
+        // Progress
+        String itemProgress = String(book.lastPage + 1) + "/" + book.pages;
+        setFont(FONT_ALT, FONT_SIZE_SMALL);
+        display->setCursor(x, y + GRID_COVER_HEIGHT + 66);
+        display->print(itemProgress);
+
+        // Finished icon
+        if (book.isFinished)
+        {
+            drawIcon(LIST_ICON_FINISHED, x + GRID_ITEM_WIDTH - GRID_ICON_FINISHED_SIZE - 8, y + GRID_COVER_HEIGHT - GRID_ICON_FINISHED_SIZE - 10, settingsManager.getDarkMode());
+        }
+    }
+
+    // Drawing scrollbar
+    if (totalBooks > GRID_MAX_ITEMS)
+    {
+        int scrollbarAreaHeight = (TOT_H - GRID_START_Y - MENU_ITEM_SIZE - 2 * LIST_ARROW_SIZE);
+        int scrollbarHeight = max(8, scrollbarAreaHeight * GRID_MAX_ITEMS / totalBooks);
+        int scrollbarY = GRID_START_Y + (scrollbarAreaHeight - scrollbarHeight) * scrollIndex / (maxScroll > 0 ? maxScroll : 1);
+        display->fillRect(TOT_W - 2 * LIST_SCROLLBAR_WIDTH - 4, scrollbarY, LIST_SCROLLBAR_WIDTH, scrollbarHeight, settingsManager.getFgColor());
+
+        // Up arrow
+        display->fillTriangle(LIST_UP_ARROW_DRAW[0][0], LIST_UP_ARROW_DRAW[0][1],
+                              LIST_UP_ARROW_DRAW[1][0], LIST_UP_ARROW_DRAW[1][1],
+                              LIST_UP_ARROW_DRAW[2][0], LIST_UP_ARROW_DRAW[2][1], settingsManager.getFgColor());
+        display->drawRoundRect(LIST_UP_ARROW_TOUCH[0], LIST_UP_ARROW_TOUCH[1], LIST_UP_ARROW_TOUCH[2], LIST_UP_ARROW_TOUCH[3], LIST_ARROW_RADIUS, settingsManager.getFgColor());
+        // Down arrow
+        display->fillTriangle(LIST_DOWN_ARROW_DRAW[0][0], LIST_DOWN_ARROW_DRAW[0][1],
+                              LIST_DOWN_ARROW_DRAW[1][0], LIST_DOWN_ARROW_DRAW[1][1],
+                              LIST_DOWN_ARROW_DRAW[2][0], LIST_DOWN_ARROW_DRAW[2][1], settingsManager.getFgColor());
+        display->drawRoundRect(LIST_DOWN_ARROW_TOUCH[0], LIST_DOWN_ARROW_TOUCH[1], LIST_DOWN_ARROW_TOUCH[2], LIST_DOWN_ARROW_TOUCH[3], LIST_ARROW_RADIUS, settingsManager.getFgColor());
+    }
+
+    if (partial_update)
+    {
+        if (PARTIAL_UPDATE_ALLOWED)
+            display->partialUpdate();
+        else
+            display->display();
+    }
+}
+
 void UIManager::renderSettings(bool partial_update)
 {
 
@@ -422,14 +547,16 @@ bool UIManager::drawIcon(String iconName, int x, int y, bool invert)
     return 1;
 }
 
-void UIManager::renderImage(const String &imgPath, int x, int y, int max_x, int max_y, uint8_t align, bool invert)
+bool UIManager::renderImage(const String &imgPath, int x, int y, int max_x, int max_y, uint8_t align, bool invert)
 {
     Serial.printf("Rendering image at %d, %d: %s\n", x, y, imgPath.c_str());
 
     if (!imageScaler.drawImageFitTo(imgPath.c_str(), x, y, max_x, max_y, align, true, invert))
     {
         Serial.println("Failed to render image!");
+        return false;
     }
+    return true;
 }
 
 void UIManager::drawQRCode(const String &data, int x, int y, int moduleSize, int fgColor, int bgColor)
