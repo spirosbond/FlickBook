@@ -122,6 +122,24 @@ const String HEADER_ITEM_LOADING_ICON = "loading_icon";
 const uint8_t LIST_MAX_FILES = (TOT_H - LIST_START_Y - MENU_ICON_SIZE - HEADER_H) / LIST_ITEM_HEIGHT; // Number of files visible at a time in the list
 // const uint8_t LIST_MAX_FILES = 7;
 
+// Grid view constants
+#define GRID_COLUMNS 3
+#define GRID_PADDING_X 10
+#define GRID_PADDING_Y 10
+#define GRID_START_X (LIST_START_X)
+#define GRID_START_Y (LIST_START_Y)
+#define GRID_TITLE_X (GRID_START_X)
+#define GRID_TITLE_Y (GRID_START_Y - 30)
+#define GRID_ITEM_WIDTH ((TOT_W - 2 * GRID_START_X - (GRID_COLUMNS - 1) * GRID_PADDING_X - 4 * LIST_SCROLLBAR_WIDTH) / GRID_COLUMNS)
+#define GRID_COVER_HEIGHT 300
+#define GRID_TEXT_HEIGHT 70
+#define GRID_ITEM_HEIGHT (GRID_COVER_HEIGHT + GRID_TEXT_HEIGHT)
+#define GRID_TITLE_MAX_CHARS 20
+#define GRID_AUTHOR_MAX_CHARS 18
+#define GRID_ICON_FINISHED_SIZE LIST_ICON_FINISHED_SIZE
+const int GRID_ROWS = (TOT_H - GRID_START_Y - MENU_ITEM_SIZE + GRID_PADDING_Y) / (GRID_ITEM_HEIGHT + GRID_PADDING_Y);
+const int GRID_MAX_ITEMS = GRID_COLUMNS * GRID_ROWS;
+
 #define SETTINGS_TAB_X (50)
 #define SETTINGS_TAB_Y (100)
 #define SETTINGS_TAB_SIZE (100)
@@ -198,7 +216,9 @@ public:
     void flushTS(uint8_t d);
     // void loadBookList();
     void renderBookList(bool partial_update = false);
+    void renderBookGrid(bool partial_update = false);
     bool handleTouchBookList(uint16_t x, uint16_t y, uint8_t touch_type);
+    bool handleTouchBookGrid(uint16_t x, uint16_t y, uint8_t touch_type);
     bool handleTouchMenu(uint16_t x, uint16_t y, uint8_t touch_type, uint16_t dx = 0, uint16_t dy = 0);
     bool handleTouchMainHeader(uint16_t x, uint16_t y, uint8_t touch_type);
     bool handleTouchReadingHeader(uint16_t x, uint16_t y, uint8_t touch_type);
@@ -211,7 +231,7 @@ public:
     // void renderTextBlockSection(const String &text, int startX, int startY, int width, int height, int pageNum);
     TextRenderResult renderTextBlockSection(const String &text, int startX, int startY, int width, int height, int pageNum, int startIdx);
     int sectionsForTextBlock(int startX, int startY, int width, int height);
-    void renderImage(const String &imgPath, int x, int y, int max_x = BOOK_PAGE_W, int max_y = BOOK_PAGE_H, uint8_t align = ALIGN_CENTER, bool invert = 0);
+    bool renderImage(const String &imgPath, int x, int y, int max_x = BOOK_PAGE_W, int max_y = BOOK_PAGE_H, uint8_t align = ALIGN_CENTER, bool invert = 0);
     void setFont(uint8_t fontFamily, uint8_t fontSize);
     void processTextBlock(
         const String &text, int startX, int startY, int width, int height,

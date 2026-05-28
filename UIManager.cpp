@@ -135,7 +135,8 @@ void UIManager::renderScreen(uint8_t s, bool partial_update, bool force)
   switch (currentScreen)
   {
   case MAIN_SCREEN:
-    renderBookList();
+    // renderBookList();
+    renderBookGrid();
     renderMenu();
     renderMainHeader();
 

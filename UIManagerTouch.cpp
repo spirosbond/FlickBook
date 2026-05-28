@@ -173,7 +173,8 @@ bool UIManager::handleShortTouch(uint16_t x, uint16_t y)
     {
         return true; // handled
     }
-    else if (handleTouchBookList(x, y, TOUCH_TYPE_SHORT))
+    // else if (handleTouchBookList(x, y, TOUCH_TYPE_SHORT))
+    else if (handleTouchBookGrid(x, y, TOUCH_TYPE_SHORT))
     {
         return true; // handled
     }
@@ -200,7 +201,8 @@ bool UIManager::handleLongTouch(uint16_t x, uint16_t y)
     {
         return true; // handled
     }
-    else if (handleTouchBookList(x, y, TOUCH_TYPE_LONG))
+    // else if (handleTouchBookList(x, y, TOUCH_TYPE_LONG))
+    else if (handleTouchBookGrid(x, y, TOUCH_TYPE_LONG))
     {
         return true; // handled
     }
@@ -230,7 +232,8 @@ bool UIManager::handleSwipeRight(uint16_t x, uint16_t y)
 bool UIManager::handleSwipeUp(uint16_t x, uint16_t y)
 {
     Serial.println("Swipe Up");
-    if (handleTouchBookList(x, y, TOUCH_TYPE_SUP))
+    // if (handleTouchBookList(x, y, TOUCH_TYPE_SUP))
+    if (handleTouchBookGrid(x, y, TOUCH_TYPE_SUP))
     {
         return true; // handled
     }
@@ -244,7 +247,8 @@ bool UIManager::handleSwipeUp(uint16_t x, uint16_t y)
 bool UIManager::handleSwipeDown(uint16_t x, uint16_t y)
 {
     Serial.println("Swipe Down");
-    if (handleTouchBookList(x, y, TOUCH_TYPE_SDOWN))
+    // if (handleTouchBookList(x, y, TOUCH_TYPE_SDOWN))
+    if (handleTouchBookGrid(x, y, TOUCH_TYPE_SDOWN))
     {
         return true; // handled
     }
@@ -416,6 +420,124 @@ bool UIManager::handleTouchBookList(uint16_t x, uint16_t y, uint8_t touch_type)
                             renderScreen(MAIN_SCREEN, true, true);
                         }
                         flushTS(30);
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    return false;
+}
+
+bool UIManager::handleTouchBookGrid(uint16_t x, uint16_t y, uint8_t touch_type)
+{
+    if (currentScreen == MAIN_SCREEN)
+    {
+        std::vector<BookInfo> bookList = libraryManager.getLibrary();
+        int totalBooks = (int)bookList.size();
+        int totalRows = (totalBooks + GRID_COLUMNS - 1) / GRID_COLUMNS;
+        int maxScrollRows = max(0, totalRows - GRID_ROWS);
+        int maxScroll = maxScrollRows * GRID_COLUMNS;
+        scrollIndex = constrain(scrollIndex, 0, maxScroll);
+
+        // Scrollbar arrow touches
+        if (x > LIST_UP_ARROW_TOUCH[0])
+        {
+            // Up arrow
+            if (y > LIST_UP_ARROW_TOUCH[1] && y < (LIST_UP_ARROW_TOUCH[1] + LIST_UP_ARROW_TOUCH[3]))
+            {
+                if (touch_type == TOUCH_TYPE_SHORT)
+                {
+                    int newScrollIndex = max(0, scrollIndex - 2 * GRID_COLUMNS);
+                    if (newScrollIndex != scrollIndex)
+                    {
+                        scrollIndex = newScrollIndex;
+                        renderScreen(MAIN_SCREEN, true, true);
+                    }
+                    flushTS(30);
+                    return true;
+                }
+            }
+            // Down arrow
+            else if (y > LIST_DOWN_ARROW_TOUCH[1] && y < (LIST_DOWN_ARROW_TOUCH[1] + LIST_DOWN_ARROW_TOUCH[3]))
+            {
+                if (touch_type == TOUCH_TYPE_SHORT)
+                {
+                    int newScrollIndex = min(maxScroll, scrollIndex + 2 * GRID_COLUMNS);
+                    if (newScrollIndex != scrollIndex)
+                    {
+                        scrollIndex = newScrollIndex;
+                        renderScreen(MAIN_SCREEN, true, true);
+                    }
+                    flushTS(30);
+                    return true;
+                }
+            }
+        }
+        // Grid item touches
+        else if (x >= GRID_START_X && x < (GRID_START_X + GRID_COLUMNS * (GRID_ITEM_WIDTH + GRID_PADDING_X) - GRID_PADDING_X))
+        {
+            if (y >= GRID_START_Y && y < (GRID_START_Y + GRID_ROWS * (GRID_ITEM_HEIGHT + GRID_PADDING_Y) - GRID_PADDING_Y))
+            {
+                // Swipe gestures in whole area
+                if (touch_type == TOUCH_TYPE_SDOWN)
+                {
+                    int newScrollIndex = min(maxScroll, scrollIndex + 2 * GRID_COLUMNS);
+                    if (newScrollIndex != scrollIndex)
+                    {
+                        scrollIndex = newScrollIndex;
+                        renderScreen(MAIN_SCREEN, true, true);
+                    }
+                    flushTS(30);
+                    return true;
+                }
+                else if (touch_type == TOUCH_TYPE_SUP)
+                {
+                    int newScrollIndex = max(0, scrollIndex - 2 * GRID_COLUMNS);
+                    if (newScrollIndex != scrollIndex)
+                    {
+                        scrollIndex = newScrollIndex;
+                        renderScreen(MAIN_SCREEN, true, true);
+                    }
+                    flushTS(30);
+                    return true;
+                }
+
+                // Short and long touch on item
+                int col = (x - GRID_START_X) / (GRID_ITEM_WIDTH + GRID_PADDING_X);
+                int row = (y - GRID_START_Y) / (GRID_ITEM_HEIGHT + GRID_PADDING_Y);
+
+                // Verify touch is within the item bounds (not in the padding)
+                int itemX = GRID_START_X + col * (GRID_ITEM_WIDTH + GRID_PADDING_X);
+                int itemY = GRID_START_Y + row * (GRID_ITEM_HEIGHT + GRID_PADDING_Y);
+                if (x >= (itemX + GRID_ITEM_WIDTH) || y >= (itemY + GRID_ITEM_HEIGHT))
+                {
+                    return false;
+                }
+
+                int index = row * GRID_COLUMNS + col;
+                if (col >= 0 && col < GRID_COLUMNS && row >= 0 && row < GRID_ROWS && (scrollIndex + index) < totalBooks)
+                {
+                    if (touch_type == TOUCH_TYPE_SHORT)
+                    {
+                        Serial.print("Grid selected file: ");
+                        Serial.println(bookList[scrollIndex + index].name);
+                        flushTS(30);
+                        libraryManager.loadCurrentBook(bookList[scrollIndex + index].name);
+                        currentSection = libraryManager.getCurrentSection();
+                        loadPageSections();
+                        loadSectionContent();
+                        renderScreen(READING_SCREEN);
+                        return true;
+                    }
+                    else if (touch_type == TOUCH_TYPE_LONG)
+                    {
+                        Serial.print("Grid long pressed: ");
+                        Serial.println(bookList[scrollIndex + index].name);
+                        flushTS(30);
+                        libraryManager.loadCurrentBook(bookList[scrollIndex + index].name);
+                        libraryManager.setIsFinished(!libraryManager.getIsFinished());
+                        renderScreen(MAIN_SCREEN, true, true);
                         return true;
                     }
                 }
