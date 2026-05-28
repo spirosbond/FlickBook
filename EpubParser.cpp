@@ -644,7 +644,7 @@ String EpubParser::getPagePath(String book, int page)
     return relPath;
 }
 
-String getCoverPath(String book)
+String EpubParser::getCoverPath(String book)
 {
     StaticJsonDocument<4096> manifestDoc = sdHandler.loadJson("/library/" + book + "/manifest.json");
     StaticJsonDocument<4096> metadata = sdHandler.loadJson("/library/" + book + "/metadata.json");

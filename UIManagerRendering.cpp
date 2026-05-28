@@ -24,14 +24,9 @@ void UIManager::renderMenu(bool partial_update)
     {
         display->fillRoundRect(MENU_ITEM_BACKLIGHT[0], MENU_ITEM_BACKLIGHT[1], MENU_ITEM_BACKLIGHT[2], MENU_ITEM_BACKLIGHT[3], MENU_ITEM_RADIUS, BLACK); // Arguments are: start X, start Y, size X, size Y, radius, color
         display->drawRoundRect(MENU_ITEM_BACKLIGHT[0], MENU_ITEM_BACKLIGHT[1], MENU_ITEM_BACKLIGHT[2], MENU_ITEM_BACKLIGHT[3], MENU_ITEM_RADIUS, WHITE); // Arguments are: start X, start Y, size X, size Y, radius, color
-        if (settingsManager.getBacklight() > 0)
-        {
-            display->fillRoundRect(MENU_ITEM_BACKLIGHT[0] + 5, MENU_ITEM_BACKLIGHT[1] + MENU_ITEM_BACKLIGHT[3] - 3 - int((MENU_ITEM_BACKLIGHT[3] - 5) * settingsManager.getBacklight() / BACKLIGHT_L5), MENU_ITEM_BACKLIGHT[2] / 8, int((MENU_ITEM_BACKLIGHT[3] - 5) * settingsManager.getBacklight() / BACKLIGHT_L5), MENU_ITEM_RADIUS, WHITE);
-        }
-        else
-        {
-            display->fillRoundRect(MENU_ITEM_BACKLIGHT[0] + 5, MENU_ITEM_BACKLIGHT[1] + 3, MENU_ITEM_BACKLIGHT[2] / 8, MENU_ITEM_BACKLIGHT[3] - 6, MENU_ITEM_RADIUS, BLACK);
-        }
+
+        drawBacklightIndicator();
+
         drawIcon(MENU_ITEM_ICON[1], MENU_ITEM_BACKLIGHT[0] + (MENU_ITEM_SIZE - MENU_ICON_SIZE) / 2, MENU_ITEM_BACKLIGHT[1] + (MENU_ITEM_SIZE - MENU_ICON_SIZE) / 2, true);
     }
 
@@ -83,6 +78,18 @@ void UIManager::renderMenu(bool partial_update)
             display->partialUpdate();
         else
             display->display();
+    }
+}
+
+void UIManager::drawBacklightIndicator()
+{
+    if (settingsManager.getBacklight() > 0)
+    {
+        display->fillRoundRect(MENU_ITEM_BACKLIGHT[0] + 5, MENU_ITEM_BACKLIGHT[1] + MENU_ITEM_BACKLIGHT[3] - 3 - int((MENU_ITEM_BACKLIGHT[3] - 5) * settingsManager.getBacklight() / BACKLIGHT_L5), MENU_ITEM_BACKLIGHT[2] / 8, int((MENU_ITEM_BACKLIGHT[3] - 5) * settingsManager.getBacklight() / BACKLIGHT_L5), MENU_ITEM_RADIUS, WHITE);
+    }
+    else
+    {
+        display->fillRoundRect(MENU_ITEM_BACKLIGHT[0] + 5, MENU_ITEM_BACKLIGHT[1] + 3, MENU_ITEM_BACKLIGHT[2] / 8, MENU_ITEM_BACKLIGHT[3] - 6, MENU_ITEM_RADIUS, BLACK);
     }
 }
 
@@ -163,7 +170,7 @@ void UIManager::renderBookList(bool partial_update)
         {
             itemTitle = itemTitle.substring(0, LIST_ITEM_MAX_CHARS - 3) + "..."; // Truncate and add '...'
         }
-
+        // renderImage("/library/" + book.name + "/" + book.coverPath, LIST_START_X, y, TOT_W, LIST_ITEM_HEIGHT, ALIGN_LEFT);
         display->setCursor(LIST_START_X + 10, y + 2 * LIST_ITEM_HEIGHT / 5);
         setFont(FONT_PRIM, FONT_SIZE_LARGE);
         display->print(itemTitle);
@@ -415,11 +422,11 @@ bool UIManager::drawIcon(String iconName, int x, int y, bool invert)
     return 1;
 }
 
-void UIManager::renderImage(const String &imgPath, int x, int y, bool invert)
+void UIManager::renderImage(const String &imgPath, int x, int y, int max_x, int max_y, uint8_t align, bool invert)
 {
     Serial.printf("Rendering image at %d, %d: %s\n", x, y, imgPath.c_str());
 
-    if (!imageScaler.drawImageFitTo(imgPath.c_str(), x, y, BOOK_PAGE_W, BOOK_PAGE_H, true, invert))
+    if (!imageScaler.drawImageFitTo(imgPath.c_str(), x, y, max_x, max_y, align, true, invert))
     {
         Serial.println("Failed to render image!");
     }

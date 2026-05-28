@@ -37,8 +37,13 @@ extern "C"
 #define TOUCH_TYPE_SDOWN 4
 #define TOUCH_TYPE_SLEFT 5
 #define TOUCH_TYPE_SRIGHT 6
+#define TOUCH_TYPE_DUP 7
+#define TOUCH_TYPE_DDOWN 8
+#define TOUCH_TYPE_DLEFT 9
+#define TOUCH_TYPE_DRIGHT 10
 #define LONG_TOUCH_DUR 800
-#define SWIPE_THRESHOLD 60 // Minimum pixels moved to be considered a swipe
+#define SWIPE_THRESHOLD 60                   // Minimum pixels moved to be considered a swipe
+#define DRAG_THRESHOLD (SWIPE_THRESHOLD / 2) // Minimum pixels moved to be considered a drag
 #define FONT_SIZE_SMALL 1
 #define FONT_SIZE_DEFAULT 2
 #define FONT_SIZE_LARGE 3
@@ -170,12 +175,16 @@ public:
     void init();
     void clearDisplay();
     void handleTouch();
-    void handleShortTouch(uint16_t x, uint16_t y);
-    void handleLongTouch(uint16_t x, uint16_t y);
-    void handleSwipeLeft(uint16_t x, uint16_t y);
-    void handleSwipeRight(uint16_t x, uint16_t y);
-    void handleSwipeUp(uint16_t x, uint16_t y);
-    void handleSwipeDown(uint16_t x, uint16_t y);
+    bool handleShortTouch(uint16_t x, uint16_t y);
+    bool handleLongTouch(uint16_t x, uint16_t y);
+    bool handleSwipeLeft(uint16_t x, uint16_t y);
+    bool handleSwipeRight(uint16_t x, uint16_t y);
+    bool handleSwipeUp(uint16_t x, uint16_t y);
+    bool handleSwipeDown(uint16_t x, uint16_t y);
+    bool handleDragLeft(uint16_t x, uint16_t y, uint16_t dx, uint16_t dy);
+    bool handleDragRight(uint16_t x, uint16_t y, uint16_t dx, uint16_t dy);
+    bool handleDragUp(uint16_t x, uint16_t y, uint16_t dx, uint16_t dy);
+    bool handleDragDown(uint16_t x, uint16_t y, uint16_t dx, uint16_t dy);
     // void renderPage(const String& text);
     void renderScreen(uint8_t s, bool partial_update = false, bool force = false);
     void loadSectionContent();
@@ -183,13 +192,14 @@ public:
     uint8_t getCurrentScreen();
     uint8_t getPreviousScreen();
     void renderMenu(bool partial_update = false);
+    void drawBacklightIndicator();
     void renderReadingHeader(bool partial_update = false);
     void renderMainHeader(bool partial_update = false);
     void flushTS(uint8_t d);
     // void loadBookList();
     void renderBookList(bool partial_update = false);
     bool handleTouchBookList(uint16_t x, uint16_t y, uint8_t touch_type);
-    bool handleTouchMenu(uint16_t x, uint16_t y, uint8_t touch_type);
+    bool handleTouchMenu(uint16_t x, uint16_t y, uint8_t touch_type, uint16_t dx = 0, uint16_t dy = 0);
     bool handleTouchMainHeader(uint16_t x, uint16_t y, uint8_t touch_type);
     bool handleTouchReadingHeader(uint16_t x, uint16_t y, uint8_t touch_type);
     bool handleTouchReadingPage(uint16_t x, uint16_t y, uint8_t touch_type);
@@ -201,7 +211,7 @@ public:
     // void renderTextBlockSection(const String &text, int startX, int startY, int width, int height, int pageNum);
     TextRenderResult renderTextBlockSection(const String &text, int startX, int startY, int width, int height, int pageNum, int startIdx);
     int sectionsForTextBlock(int startX, int startY, int width, int height);
-    void renderImage(const String &imgPath, int x, int y, bool invert = 0);
+    void renderImage(const String &imgPath, int x, int y, int max_x = BOOK_PAGE_W, int max_y = BOOK_PAGE_H, uint8_t align = ALIGN_CENTER, bool invert = 0);
     void setFont(uint8_t fontFamily, uint8_t fontSize);
     void processTextBlock(
         const String &text, int startX, int startY, int width, int height,
@@ -230,6 +240,7 @@ private:
     bool isTouchActive = false;
     unsigned long touchStartTime = 0;
     bool longPressTriggered = false;
+    bool dragTriggered = false;
     uint16_t lastTouchX = 0, lastTouchY = 0, touchStartX = 0, touchStartY = 0;
     uint8_t partial_update_counter = 0;
     TextRenderResult renderResult;

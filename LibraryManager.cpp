@@ -41,9 +41,8 @@ void LibraryManager::init()
     {
       epubParser.parseEpubMetadata(book);
     }
-
-    loadLibrary();
   }
+  loadLibrary();
 }
 
 void LibraryManager::loadLibrary()
@@ -93,6 +92,7 @@ BookInfo LibraryManager::bookInfoFromJson(const String &name, const StaticJsonDo
     info.title = doc["title"].as<String>();
     info.author = doc["author"].as<String>();
     info.isFinished = bool(doc["isFinished"].as<int>());
+    info.coverPath = doc["coverPath"].as<String>();
   }
   else
   {
@@ -103,6 +103,7 @@ BookInfo LibraryManager::bookInfoFromJson(const String &name, const StaticJsonDo
     info.title = name;
     info.author = "";
     info.isFinished = false;
+    info.coverPath = "";
   }
   return info;
 }
@@ -159,8 +160,8 @@ bool LibraryManager::loadCurrentBook(String book)
 bool LibraryManager::initBookUserData()
 {
   JsonDocument metadata = sdHandler.loadJson("/library/" + currentBook + "/metadata.json");
-  String keys[] = {"name", "pages", "lastPage", "lastSection", "lastSectionIndex", "title", "author", "isFinished"};
-  String values[] = {currentBook, metadata["pages"], "0", "0", "0", metadata["title"], metadata["author"], "0"};
+  String keys[] = {"name", "pages", "lastPage", "lastSection", "lastSectionIndex", "title", "author", "isFinished", "coverPath"};
+  String values[] = {currentBook, metadata["pages"], "0", "0", "0", metadata["title"], metadata["author"], "0", epubParser.getCoverPath(currentBook)};
   sdHandler.saveJson("/library/" + currentBook + "/user.json", keys, values, NUMITEMS(keys));
   return loadBookUserData();
 }
