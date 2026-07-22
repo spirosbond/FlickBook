@@ -1,22 +1,25 @@
 /**
  * @file    ImageScaler.cpp
- * @brief   JPEG image scaling implementation using TJpgDec.
+ * @brief   JPEG image scaling implementation using JPEGDEC.
  *
- * Bypasses the Inkplate SDK's hardcoded setJpgScale(1) by calling
- * TJpgDec directly with a custom callback that replicates the SDK's
- * Floyd-Steinberg dithering and grayscale conversion.
+ * Uses bitbank2/JPEGDEC for JPEG decoding with built-in Floyd-Steinberg
+ * dithering and support for progressive JPEG.
  */
 #include "ImageScaler.h"
+
+// Arduino only auto-compiles .cpp/.c files in the sketch root and src/ — not
+// arbitrary subfolders like libs/. Following the project convention (see
+// UIManagerRendering.cpp including libs/qrcode.c), we pull the JPEGDEC
+// implementation into this translation unit directly. ImageScaler is its sole
+// consumer, so this produces no duplicate symbols.
+#include "libs/JPEGDEC.cpp"
 
 extern SDHandler sdHandler;
 
 // Static member definitions
 Inkplate *ImageScaler::s_display = nullptr;
-int16_t ImageScaler::s_lastY = -1;
-int16_t ImageScaler::s_blockW = -1;
-int16_t ImageScaler::s_blockH = -1;
-uint8_t ImageScaler::s_ditherBuffer[2][E_INK_WIDTH + 20] = {};
-uint8_t ImageScaler::s_jpegDitherBuffer[18][18] = {};
+bool ImageScaler::s_dither = false;
+bool ImageScaler::s_invert = false;
 
 ImageScaler::ImageScaler(Inkplate *display)
     : _display(display) {}
@@ -29,7 +32,7 @@ bool ImageScaler::isJpeg(const char *path)
 }
 
 /**
- * Pick the smallest TJpgDec scale factor (largest image) that fits within maxW x maxH.
+ * Pick the smallest scale factor (largest image) that fits within maxW x maxH.
  * Returns 1, 2, 4, or 8.
  */
 uint8_t ImageScaler::pickBestScaleFactor(int origW, int origH, int maxW, int maxH)
@@ -132,7 +135,7 @@ bool ImageScaler::drawJpegWithScale(const char *path, int x, int y, uint8_t scal
     uint8_t *buff = (uint8_t *)ps_malloc(total);
     if (!buff)
     {
-        Serial.println("[ImageScaler] ps_malloc failed");
+        Serial.println("[ImageScaler] ps_malloc failed for file buffer");
         dat.close();
         return false;
     }
@@ -153,131 +156,164 @@ bool ImageScaler::drawJpegWithScale(const char *path, int x, int y, uint8_t scal
 
     // Initialize static state for the callback
     s_display = _display;
-    s_lastY = -1;
-    s_blockW = -1;
-    s_blockH = -1;
-    memset(s_ditherBuffer, 0, sizeof(s_ditherBuffer));
-    memset(s_jpegDitherBuffer, 0, sizeof(s_jpegDitherBuffer));
+    s_dither = dither;
+    s_invert = invert;
 
-    // Configure TJpgDec with our scale and callback
-    TJpgDec.setJpgScale(scaleFactor);
-    TJpgDec.setCallback(jpegChunkCallback);
+    // Map scale factor to JPEGDEC decode options
+    int decodeOptions = 0;
+    switch (scaleFactor)
+    {
+    case 2:
+        decodeOptions = JPEG_SCALE_HALF;
+        break;
+    case 4:
+        decodeOptions = JPEG_SCALE_QUARTER;
+        break;
+    case 8:
+        decodeOptions = JPEG_SCALE_EIGHTH;
+        break;
+    default:
+        break;
+    }
 
-    JRESULT result = TJpgDec.drawJpg(x, y, buff, total, dither, invert);
+    // Heap-allocate JPEGDEC (~17.5KB internal state — too large for ESP32 stack)
+    JPEGDEC *jpeg = new JPEGDEC();
+    if (!jpeg)
+    {
+        Serial.println("[ImageScaler] Failed to allocate JPEGDEC");
+        free(buff);
+        return false;
+    }
+
+    if (!jpeg->openRAM(buff, total, jpegDrawCallback))
+    {
+        Serial.printf("[ImageScaler] JPEGDEC openRAM failed, error: %d\n", jpeg->getLastError());
+        delete jpeg;
+        free(buff);
+        return false;
+    }
+
+    Serial.printf("[ImageScaler] JPEG %dx%d, type: %s, subsample: 0x%02X\n",
+                  jpeg->getWidth(), jpeg->getHeight(),
+                  jpeg->getJPEGType() == JPEG_MODE_PROGRESSIVE ? "Progressive" : "Baseline",
+                  jpeg->getSubSample());
+
+    if (jpeg->getJPEGType() == JPEG_MODE_PROGRESSIVE)
+        Serial.println("[ImageScaler] Progressive JPEG: decode may produce DC-only (thumbnail) quality");
+
+    bool is1Bit = (_display->getDisplayMode() == INKPLATE_1BIT);
+    int result;
+
+    if (dither)
+    {
+        jpeg->setPixelType(is1Bit ? ONE_BIT_DITHERED : FOUR_BIT_DITHERED);
+
+        // Pad width to MCU boundary (16px) for safe dither buffer sizing
+        int ditherW = (jpeg->getWidth() + 15) & ~15;
+        uint8_t *ditherBuf = (uint8_t *)ps_malloc(ditherW * 16);
+        if (!ditherBuf)
+        {
+            Serial.println("[ImageScaler] ps_malloc failed for dither buffer");
+            jpeg->close();
+            delete jpeg;
+            free(buff);
+            return false;
+        }
+
+        result = jpeg->decodeDither(x, y, ditherBuf, decodeOptions);
+        free(ditherBuf);
+    }
+    else
+    {
+        jpeg->setPixelType(EIGHT_BIT_GRAYSCALE);
+        result = jpeg->decode(x, y, decodeOptions);
+    }
+
+    if (!result)
+        Serial.printf("[ImageScaler] JPEGDEC decode failed, error: %d\n", jpeg->getLastError());
+
+    jpeg->close();
+    delete jpeg;
     free(buff);
 
-    if (result != JDR_OK)
-        Serial.printf("[ImageScaler] drawJpg error: %d\n", result);
-
-    return result == JDR_OK;
+    return result == 1;
 }
 
 /**
- * TJpgDec decode callback — replicates the Inkplate SDK's drawJpegChunk
- * for non-color boards with identical Floyd-Steinberg dithering.
- * Uses Adafruit_GFX public interface for batched pixel writes.
+ * JPEGDEC draw callback — renders decoded pixel blocks to the Inkplate display.
+ * Handles three pixel formats based on the decode mode:
+ *   - ONE_BIT_DITHERED (iBpp=1): packed bits with built-in F-S dithering
+ *   - FOUR_BIT_DITHERED (iBpp=4): packed nibbles, mapped to 3-bit for Inkplate
+ *   - EIGHT_BIT_GRAYSCALE (iBpp=8): direct grayscale, quantized to display depth
  */
-bool ImageScaler::jpegChunkCallback(int16_t x, int16_t y, uint16_t w, uint16_t h,
-                                    uint16_t *bitmap, bool dither, bool invert)
+int ImageScaler::jpegDrawCallback(JPEGDRAW *pDraw)
 {
     if (!s_display)
-        return false;
+        return 0;
 
-    // Dither row transition: propagate error from previous row of blocks
-    if (dither && y != s_lastY)
-    {
-        for (int i = 0; i < E_INK_WIDTH + 20; ++i)
-        {
-            s_ditherBuffer[0][i] = s_ditherBuffer[1][i];
-            s_ditherBuffer[1][i] = 0;
-        }
-        s_lastY = y;
-    }
-
-    // Use Adafruit_GFX public interface for batched writes
+    bool is1Bit = (s_display->getDisplayMode() == INKPLATE_1BIT);
     Adafruit_GFX *gfx = static_cast<Adafruit_GFX *>(s_display);
     gfx->startWrite();
 
-    bool is1Bit = (s_display->getDisplayMode() == INKPLATE_1BIT);
+    uint8_t *pixels = (uint8_t *)pDraw->pPixels;
+    // Use iWidthUsed for edge blocks; iWidth for pixel array stride/pitch
+    int drawW = pDraw->iWidthUsed;
 
-    for (int j = 0; j < h; ++j)
+    for (int j = 0; j < pDraw->iHeight; j++)
     {
-        for (int i = 0; i < w; ++i)
+        for (int i = 0; i < drawW; i++)
         {
-            uint32_t rgb = bitmap[j * w + i];
-            uint8_t r = _RED(rgb);
-            uint8_t g = _GREEN(rgb);
-            uint8_t b = _BLUE(rgb);
+            uint8_t val;
 
-            uint32_t val;
-
-            if (dither)
+            if (pDraw->iBpp == 1)
             {
-                // Floyd-Steinberg dithering (matches SDK's ditherGetPixelJpeg)
-                uint8_t px = RGB8BIT(r, g, b);
-
-                if (s_blockW == -1)
-                {
-                    s_blockW = w;
-                    s_blockH = h;
-                }
-
-                if (is1Bit)
-                    px = (uint16_t)px >> 1;
-
-                uint16_t oldPixel = min((uint16_t)0xFF,
-                                        (uint16_t)((uint16_t)px +
-                                                   (uint16_t)s_jpegDitherBuffer[j + 1][i + 1] +
-                                                   (j ? (uint16_t)0 : (uint16_t)s_ditherBuffer[0][x + i])));
-
-                uint8_t newPixel = oldPixel & (is1Bit ? B10000000 : B11100000);
-                uint8_t quantError = oldPixel - newPixel;
-
-                s_jpegDitherBuffer[j + 1 + 1][i + 0 + 1] += (quantError * 5) >> 4;
-                s_jpegDitherBuffer[j + 0 + 1][i + 1 + 1] += (quantError * 7) >> 4;
-                s_jpegDitherBuffer[j + 1 + 1][i + 1 + 1] += (quantError * 1) >> 4;
-                s_jpegDitherBuffer[j + 1 + 1][i - 1 + 1] += (quantError * 3) >> 4;
-
-                val = newPixel >> 5;
-            }
-            else
-            {
-                val = RGB3BIT(r, g, b);
-            }
-
-            if (is1Bit)
-            {
-                val = (~val >> 2) & 1;
-                if (invert)
+                // ONE_BIT_DITHERED: packed bits, MSB first, per-row byte alignment
+                int pitch = (pDraw->iWidth + 7) >> 3;
+                uint8_t bit = (pixels[j * pitch + (i >> 3)] >> (7 - (i & 7))) & 1;
+                // JPEGDEC: 0=black, 1=white; Inkplate 1-bit: WHITE=0, BLACK=1
+                val = 1 - bit;
+                if (s_invert)
                     val = 1 - val;
             }
-            else
+            else if (pDraw->iBpp == 4)
             {
-                if (invert)
+                // FOUR_BIT_DITHERED: packed nibbles, high nibble first
+                int pitch = (pDraw->iWidth + 1) >> 1;
+                uint8_t nibble;
+                if (i & 1)
+                    nibble = pixels[j * pitch + (i >> 1)] & 0x0F;
+                else
+                    nibble = (pixels[j * pitch + (i >> 1)] >> 4) & 0x0F;
+
+                // Map 0-15 → 0-7 for Inkplate 3-bit grayscale (0=black, 7=white)
+                val = nibble >> 1;
+                if (s_invert)
                     val = 7 - val;
             }
+            else
+            {
+                // EIGHT_BIT_GRAYSCALE (no-dither path)
+                uint8_t gray = pixels[j * pDraw->iWidth + i];
+                if (is1Bit)
+                {
+                    // Inkplate 1-bit: WHITE=0, BLACK=1
+                    val = (gray < 128) ? 1 : 0;
+                    if (s_invert)
+                        val = 1 - val;
+                }
+                else
+                {
+                    // Inkplate 3-bit: 0=black, 7=white
+                    val = gray >> 5;
+                    if (s_invert)
+                        val = 7 - val;
+                }
+            }
 
-            gfx->writePixel(x + i, y + j, val);
+            gfx->writePixel(pDraw->x + i, pDraw->y + j, val);
         }
-    }
-
-    // Propagate dithering errors between horizontal blocks
-    if (dither)
-    {
-        for (int i = 0; i < 18; ++i)
-        {
-            if (x + i)
-                s_ditherBuffer[1][x + i - 1] += s_jpegDitherBuffer[s_blockH - 1 + 2][i];
-            s_jpegDitherBuffer[i][0 + 1] = s_jpegDitherBuffer[i][s_blockW - 1 + 2];
-        }
-        for (int j = 0; j < 18; ++j)
-            for (int i = 0; i < 18; ++i)
-                if (i != 1)
-                    s_jpegDitherBuffer[j][i] = 0;
-        s_jpegDitherBuffer[17][1] = 0;
     }
 
     gfx->endWrite();
-
-    return true;
+    return 1;
 }
