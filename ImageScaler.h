@@ -57,13 +57,34 @@ private:
     static bool isJpeg(const char *path);
     static uint8_t pickBestScaleFactor(int origW, int origH, int maxW, int maxH);
 
-    // JPEGDEC draw callback
+    // JPEGDEC draw callback. Two modes:
+    //  - capture mode (s_captureBuf != null): copies decoded grayscale into a
+    //    PSRAM buffer for high-quality software downscaling.
+    //  - streaming mode: applies the Inkplate SDK's Floyd-Steinberg dithering
+    //    directly (used for full-resolution / scale-1 draws).
     static int jpegDrawCallback(JPEGDRAW *pDraw);
+
+    // Area-average a full-resolution grayscale buffer down to outW x outH, then
+    // Floyd-Steinberg dither (matching the Inkplate SDK) and blit at (x, y).
+    void ditherBlitDownscaled(const uint8_t *gray, int gw, int gh,
+                              int outW, int outH, int x, int y,
+                              bool dither, bool invert);
 
     // Static state for the callback
     static Inkplate *s_display;
     static bool s_dither;
     static bool s_invert;
+    static int16_t s_lastY;
+    static int16_t s_blockW;
+    static int16_t s_blockH;
+    static uint8_t s_ditherBuffer[2][E_INK_WIDTH + 20];
+    static uint8_t s_jpegDitherBuffer[18][18];
+
+    // Capture-mode framebuffer (grayscale, gw*gh); when non-null the callback
+    // copies decoded pixels here instead of drawing to the display.
+    static uint8_t *s_captureBuf;
+    static int s_captureW;
+    static int s_captureH;
 };
 
 #endif
