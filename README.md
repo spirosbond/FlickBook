@@ -123,7 +123,7 @@ The project leverages the InkPlate 6 Flick's excellent recycled e-paper displays
    - Open `ebook_reader.ino` in Arduino IDE
 
 2. **Configure Board Settings**:
-   - Select "Inkplate 6(ESP32)" from Tools → Board
+   - Select "Soldered Inkplate 6 FLICK" from Tools → Board
    - Choose appropriate COM port
    - Set upload speed to 921600 baud
 
