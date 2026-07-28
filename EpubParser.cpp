@@ -3,7 +3,27 @@
 
 extern SDHandler sdHandler;
 
+// The ~40KB unzip working buffer is allocated lazily in PSRAM at runtime (see
+// ensureZip). It must NOT be allocated during static init because PSRAM is not
+// yet available when global constructors run, and it is too large for the
+// internal-RAM .bss segment (InkplateLibrary 11.x already uses more DRAM).
 EpubParser::EpubParser() : isOpen(false) {}
+
+bool EpubParser::ensureZip()
+{
+    if (zip)
+        return true;
+    void *p = ps_malloc(sizeof(UNZIP)); // prefer PSRAM to conserve internal RAM
+    if (!p)
+        p = malloc(sizeof(UNZIP)); // fall back to internal RAM
+    if (!p)
+    {
+        Serial.println("EpubParser: failed to allocate unzip buffer");
+        return false;
+    }
+    zip = new (p) UNZIP();
+    return true;
+}
 
 SdFile EpubParser::file;
 void *EpubParser::myOpen(const char *filename, int32_t *size)
@@ -151,7 +171,9 @@ bool EpubParser::openEpub(String filename, String book)
     // this->filename = filename;
     this->book = book;
     char szComment[256];
-    int rc = zip.openZIP(filename.c_str(), myOpen, myClose, myRead, mySeek);
+    if (!ensureZip())
+        return false;
+    int rc = zip->openZIP(filename.c_str(), myOpen, myClose, myRead, mySeek);
     // Serial.println("openEpub2");
     // Serial.println(rc);
     if (rc != UNZ_OK)
@@ -162,7 +184,7 @@ bool EpubParser::openEpub(String filename, String book)
     isOpen = true;
     Serial.println("EPUB file opened successfully.");
     // Display the global comment and all of the filenames within
-    rc = zip.getGlobalComment(szComment, sizeof(szComment));
+    rc = zip->getGlobalComment(szComment, sizeof(szComment));
     Serial.print("Global comment: ");
     Serial.println(szComment);
     return true;
@@ -175,14 +197,14 @@ bool EpubParser::parseEpubMetadata(String book)
     //     return false;
     // }
 
-    // int rc = zip.gotoFirstFile();
+    // int rc = zip->gotoFirstFile();
     // char szName[256];
     // String content = "nothing here...";
     // char *buffer;
     // unz_file_info fi;
 
     // while (rc == UNZ_OK) {
-    //     rc = zip.getFileInfo(&fi, szName, sizeof(szName), NULL, 0, NULL, 0);
+    //     rc = zip->getFileInfo(&fi, szName, sizeof(szName), NULL, 0, NULL, 0);
     //     if (rc == UNZ_OK) {
     //         String fileName = String(szName);
     //         // Serial.println(fileName);
@@ -199,8 +221,8 @@ bool EpubParser::parseEpubMetadata(String book)
     //                 Serial.println("Memory allocation failed.");
     //                 return "Memory error.";
     //             }
-    //             zip.openCurrentFile();
-    //             rc = zip.readCurrentFile((uint8_t*) buffer, fi.uncompressed_size);
+    //             zip->openCurrentFile();
+    //             rc = zip->readCurrentFile((uint8_t*) buffer, fi.uncompressed_size);
     //             if (rc != fi.uncompressed_size) {
     //               Serial.print("Read error, rc=");
     //               Serial.println(rc, DEC);
@@ -221,7 +243,7 @@ bool EpubParser::parseEpubMetadata(String book)
     //             return true;
     //         }
     //     }
-    //     rc = zip.gotoNextFile();
+    //     rc = zip->gotoNextFile();
     // }
     String content = "nothing here...";
     std::vector<String> fileList = sdHandler.listFiles("/library/" + book, false, true);
@@ -428,14 +450,14 @@ bool EpubParser::extractEpubContent()
     // Load manifest JSON
     // JsonDocument manifest = sdHandler.loadJson("/library/" + this->book + "/manifest.json");
 
-    int rc = zip.gotoFirstFile();
+    int rc = zip->gotoFirstFile();
     char szName[256];
     char *buffer;
     unz_file_info fi;
     Serial.println("Starting Extraction for epub: " + this->book);
     while (rc == UNZ_OK)
     {
-        rc = zip.getFileInfo(&fi, szName, sizeof(szName), NULL, 0, NULL, 0);
+        rc = zip->getFileInfo(&fi, szName, sizeof(szName), NULL, 0, NULL, 0);
         if (rc == UNZ_OK)
         {
             String fileName = String(szName);
@@ -443,7 +465,7 @@ bool EpubParser::extractEpubContent()
             if (fileName.endsWith("/"))
             {
                 Serial.println(fileName + " is a folder. Skipping...");
-                rc = zip.gotoNextFile();
+                rc = zip->gotoNextFile();
                 continue;
             }
 
@@ -472,9 +494,9 @@ bool EpubParser::extractEpubContent()
                 return false;
             }
 
-            zip.openCurrentFile();
-            rc = zip.readCurrentFile((uint8_t *)buffer, fi.uncompressed_size);
-            zip.closeCurrentFile();
+            zip->openCurrentFile();
+            rc = zip->readCurrentFile((uint8_t *)buffer, fi.uncompressed_size);
+            zip->closeCurrentFile();
 
             if (rc != fi.uncompressed_size)
             {
@@ -498,7 +520,7 @@ bool EpubParser::extractEpubContent()
             free(buffer);
             // }
         }
-        rc = zip.gotoNextFile();
+        rc = zip->gotoNextFile();
     }
 
     Serial.println("Extraction completed.");
@@ -509,7 +531,7 @@ void EpubParser::closeEpub()
 {
     if (isOpen)
     {
-        zip.closeZIP();
+        zip->closeZIP();
         isOpen = false;
     }
 }

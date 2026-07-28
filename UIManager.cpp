@@ -34,7 +34,7 @@ void UIManager::init()
   bool tsInitialized = false;
   for (int i = 0; i < 5; i++)
   {
-    if (display->tsInit(true))
+    if (display->touchscreen.init(true))
     {
       Serial.println("Touchscreen init ok");
       tsInitialized = true;
@@ -219,10 +219,10 @@ void UIManager::flushTS(uint8_t d)
 
   uint16_t x[2], y[2];
   // delay(100);
-  while (display->tsAvailable())
+  while (display->touchscreen.available())
   {
     Serial.println("Flushing touchscreen...");
-    display->tsGetData(x, y);
+    display->touchscreen.getData(x, y);
     delay(d);
   }
 }

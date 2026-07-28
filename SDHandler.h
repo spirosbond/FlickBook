@@ -1,7 +1,8 @@
 #ifndef SDHANDLER_H
 #define SDHANDLER_H
 #include "Inkplate.h"
-#include "SdFat.h"
+// SdFat is bundled with InkplateLibrary (11.x) and pulled in via Inkplate.h.
+// Do not include an external SdFat here to avoid duplicate-symbol conflicts.
 #include <vector>
 #include <ArduinoJson.h>
 // #include <JPEGDEC.h>
