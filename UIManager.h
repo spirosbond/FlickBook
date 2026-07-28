@@ -231,7 +231,7 @@ public:
     // void renderTextBlockSection(const String &text, int startX, int startY, int width, int height, int pageNum);
     TextRenderResult renderTextBlockSection(const String &text, int startX, int startY, int width, int height, int pageNum, int startIdx);
     int sectionsForTextBlock(int startX, int startY, int width, int height);
-    bool renderImage(const String &imgPath, int x, int y, int max_x = BOOK_PAGE_W, int max_y = BOOK_PAGE_H, uint8_t align = ALIGN_CENTER, bool invert = 0);
+    bool renderImage(const String &imgPath, int x, int y, int max_x = BOOK_PAGE_W, int max_y = BOOK_PAGE_H, uint8_t align = ALIGN_CENTER, bool invert = 0, bool andCache = false);
     void setFont(uint8_t fontFamily, uint8_t fontSize);
     void processTextBlock(
         const String &text, int startX, int startY, int width, int height,

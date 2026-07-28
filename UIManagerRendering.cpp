@@ -239,8 +239,10 @@ void UIManager::renderBookGrid(bool partial_update)
 
         const BookInfo &book = bookList[scrollIndex + i];
 
-        // Render cover image or acronym fallback
-        if (book.coverPath != "null" && book.coverPath.length() > 0 && renderImage("/library/" + book.name + "/" + book.coverPath, x, y, GRID_ITEM_WIDTH, GRID_COVER_HEIGHT, ALIGN_CENTER))
+        // Render cover image or acronym fallback. andCache=true lazily creates a
+        // pre-dithered thumbnail cache for this scale on first render, then reuses it.
+        String coverFullPath = "/library/" + book.name + "/" + book.coverPath;
+        if (book.coverPath != "null" && book.coverPath.length() > 0 && renderImage(coverFullPath, x, y, GRID_ITEM_WIDTH, GRID_COVER_HEIGHT, ALIGN_CENTER, false, true))
         {
         }
         else
@@ -547,11 +549,11 @@ bool UIManager::drawIcon(String iconName, int x, int y, bool invert)
     return 1;
 }
 
-bool UIManager::renderImage(const String &imgPath, int x, int y, int max_x, int max_y, uint8_t align, bool invert)
+bool UIManager::renderImage(const String &imgPath, int x, int y, int max_x, int max_y, uint8_t align, bool invert, bool andCache)
 {
     Serial.printf("Rendering image at %d, %d: %s\n", x, y, imgPath.c_str());
 
-    if (!imageScaler.drawImageFitTo(imgPath.c_str(), x, y, max_x, max_y, align, true, invert))
+    if (!imageScaler.drawImageFitTo(imgPath.c_str(), x, y, max_x, max_y, align, true, invert, andCache))
     {
         Serial.println("Failed to render image!");
         return false;

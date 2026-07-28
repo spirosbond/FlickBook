@@ -16,6 +16,20 @@
 
 extern SDHandler sdHandler;
 
+// ---------------------------------------------------------------------------
+// PDT ("Pre-Dithered Thumbnail") cache format
+// 12-byte header, little-endian, followed by packed pixel payload:
+//   magic[4] = 'P','D','T','1'
+//   uint8  bitDepth   (1 = 1-bit display, 3 = 3-bit display)
+//   uint8  reserved   (0)
+//   uint16 width, height
+// Payload (rows padded to whole bytes):
+//   bitDepth 1 -> 1 bpp, MSB-first, value = final display pixel (0/1)
+//   bitDepth 3 -> 4 bpp, high nibble first, value = final display pixel (0..7)
+// ---------------------------------------------------------------------------
+#define PDT_HEADER_SIZE 12
+static const uint8_t PDT_MAGIC[4] = {'P', 'D', 'T', '1'};
+
 // Static member definitions
 Inkplate *ImageScaler::s_display = nullptr;
 bool ImageScaler::s_dither = false;
@@ -78,7 +92,7 @@ bool ImageScaler::getScaledDimensions(const char *path, int maxW, int maxH,
 }
 
 bool ImageScaler::drawImageFitTo(const char *path, int x, int y, int maxW, int maxH, uint8_t align,
-                                 bool dither, bool invert)
+                                 bool dither, bool invert, bool andCache)
 {
     int origW, origH;
     if (!sdHandler.getImageDimensions(String(path), origW, origH))
@@ -114,6 +128,20 @@ bool ImageScaler::drawImageFitTo(const char *path, int x, int y, int maxW, int m
 
         Serial.printf("[ImageScaler] JPEG %dx%d -> 1/%d = %dx%d\n",
                       origW, origH, scale, scaledW, (origH + scale - 1) / scale);
+
+        // Cache path (covers): only when the caller opts in via andCache and for
+        // the dither=true, invert=false configuration caches are baked with.
+        // Lazily create the single-scale cache on first use, then blit it;
+        // subsequent renders skip decoding entirely.
+        if (andCache && dither && !invert)
+        {
+            String cachePath = deriveCachePath(path, scale);
+            if (!sdHandler.fileExists(cachePath))
+                generateScaledCache(path, scale);
+            if (sdHandler.fileExists(cachePath) &&
+                drawCachedBitmap(cachePath.c_str(), x + offsetX, y))
+                return true;
+        }
 
         return drawJpegWithScale(path, x + offsetX, y, scale, dither, invert);
     }
@@ -299,13 +327,18 @@ bool ImageScaler::drawJpegWithScale(const char *path, int x, int y, uint8_t scal
  */
 void ImageScaler::ditherBlitDownscaled(const uint8_t *gray, int gw, int gh,
                                        int outW, int outH, int x, int y,
-                                       bool dither, bool invert)
+                                       bool dither, bool invert,
+                                       uint8_t *outRaster)
 {
     if (outW <= 0 || outH <= 0)
         return;
 
     const bool is1Bit = (_display->getDisplayMode() == INKPLATE_1BIT);
+    const bool toRaster = (outRaster != nullptr);
     Adafruit_GFX *gfx = static_cast<Adafruit_GFX *>(_display);
+
+    // Packed-raster row stride: 1 bpp (1-bit) or 4 bpp (3-bit)
+    const int rasterPitch = is1Bit ? ((outW + 7) >> 3) : ((outW + 1) >> 1);
 
     // Two running error rows for Floyd-Steinberg (width padded by 1 on each side)
     int32_t *errCur = (int32_t *)ps_malloc((size_t)(outW + 2) * sizeof(int32_t));
@@ -320,7 +353,8 @@ void ImageScaler::ditherBlitDownscaled(const uint8_t *gray, int gw, int gh,
     memset(errCur, 0, (size_t)(outW + 2) * sizeof(int32_t));
     memset(errNext, 0, (size_t)(outW + 2) * sizeof(int32_t));
 
-    gfx->startWrite();
+    if (!toRaster)
+        gfx->startWrite();
 
     for (int oy = 0; oy < outH; ++oy)
     {
@@ -388,7 +422,27 @@ void ImageScaler::ditherBlitDownscaled(const uint8_t *gray, int gw, int gh,
                     val = 7 - val;
             }
 
-            gfx->writePixel(x + ox, y + oy, val);
+            if (toRaster)
+            {
+                // Pack the final display value: 1 bpp (MSB-first) or 4 bpp (high nibble first)
+                uint8_t *rrow = outRaster + (size_t)oy * rasterPitch;
+                if (is1Bit)
+                {
+                    if (val & 1)
+                        rrow[ox >> 3] |= (uint8_t)(0x80 >> (ox & 7));
+                }
+                else
+                {
+                    if (ox & 1)
+                        rrow[ox >> 1] |= (uint8_t)(val & 0x0F);
+                    else
+                        rrow[ox >> 1] |= (uint8_t)((val & 0x0F) << 4);
+                }
+            }
+            else
+            {
+                gfx->writePixel(x + ox, y + oy, val);
+            }
         }
 
         // Advance error rows
@@ -398,7 +452,8 @@ void ImageScaler::ditherBlitDownscaled(const uint8_t *gray, int gw, int gh,
         memset(errNext, 0, (size_t)(outW + 2) * sizeof(int32_t));
     }
 
-    gfx->endWrite();
+    if (!toRaster)
+        gfx->endWrite();
     free(errCur);
     free(errNext);
 }
@@ -533,4 +588,299 @@ int ImageScaler::jpegDrawCallback(JPEGDRAW *pDraw)
 
     gfx->endWrite();
     return 1;
+}
+
+// ---------------------------------------------------------------------------
+// Cover thumbnail cache
+// ---------------------------------------------------------------------------
+
+String ImageScaler::deriveCachePath(const char *srcPath, uint8_t scaleFactor)
+{
+    String p = String(srcPath);
+    int dot = p.lastIndexOf('.');
+    int slash = p.lastIndexOf('/');
+    String base = (dot > slash) ? p.substring(0, dot) : p;
+    // Distinct .pdt extension so nothing mistakes the raster for a decodable JPEG.
+    return base + "_" + String(scaleFactor) + ".pdt";
+}
+
+bool ImageScaler::isProgressiveJpeg(const char *path)
+{
+    SdFile f;
+    if (!f.open(path, O_RDONLY))
+        return false;
+
+    // Scan JPEG markers for a Start-Of-Frame; SOF2 (0xC2) == progressive.
+    bool progressive = false;
+    uint8_t hdr[2];
+    if (f.read(hdr, 2) == 2 && hdr[0] == 0xFF && hdr[1] == 0xD8)
+    {
+        uint8_t m[2];
+        while (f.read(m, 2) == 2)
+        {
+            if (m[0] != 0xFF)
+                break;
+            uint8_t marker = m[1];
+            if (marker == 0xC2)
+            {
+                progressive = true;
+                break;
+            }
+            // Baseline / other SOF -> not progressive
+            if (marker == 0xC0 || marker == 0xC1 || marker == 0xC3 || marker == 0xDA)
+                break;
+            uint8_t len[2];
+            if (f.read(len, 2) != 2)
+                break;
+            int seglen = (len[0] << 8) | len[1];
+            f.seekCur(seglen - 2);
+        }
+    }
+    f.close();
+    return progressive;
+}
+
+uint8_t *ImageScaler::decodeJpegToGray(const char *path, uint8_t reqScale,
+                                       int &decW, int &decH, bool &isProgressive)
+{
+    SdFile dat;
+    if (!dat.open(path, O_RDONLY))
+    {
+        Serial.printf("[ImageScaler] Failed to open: %s\n", path);
+        return nullptr;
+    }
+
+    uint32_t total = dat.fileSize();
+    uint8_t *buff = (uint8_t *)ps_malloc(total);
+    if (!buff)
+    {
+        Serial.println("[ImageScaler] ps_malloc failed for file buffer");
+        dat.close();
+        return nullptr;
+    }
+
+    uint32_t pnt = 0;
+    while (pnt < total)
+    {
+        uint32_t toread = dat.available();
+        if (toread > 0)
+        {
+            int bytesRead = dat.read(buff + pnt, toread);
+            if (bytesRead > 0)
+                pnt += bytesRead;
+        }
+    }
+    dat.close();
+
+    JPEGDEC *jpeg = new JPEGDEC();
+    if (!jpeg || !jpeg->openRAM(buff, total, jpegDrawCallback))
+    {
+        Serial.println("[ImageScaler] decodeJpegToGray: openRAM failed");
+        if (jpeg) delete jpeg;
+        free(buff);
+        return nullptr;
+    }
+
+    isProgressive = (jpeg->getJPEGType() == JPEG_MODE_PROGRESSIVE);
+
+    int decOptions = 0;
+    switch (reqScale)
+    {
+    case 2: decOptions = JPEG_SCALE_HALF; break;
+    case 4: decOptions = JPEG_SCALE_QUARTER; break;
+    case 8: decOptions = JPEG_SCALE_EIGHTH; break;
+    default: break;
+    }
+
+    decW = (jpeg->getWidth() + reqScale - 1) / reqScale;
+    decH = (jpeg->getHeight() + reqScale - 1) / reqScale;
+
+    uint8_t *fb = (uint8_t *)ps_malloc((size_t)decW * decH);
+    if (!fb)
+    {
+        Serial.println("[ImageScaler] ps_malloc failed for grayscale buffer");
+        jpeg->close();
+        delete jpeg;
+        free(buff);
+        return nullptr;
+    }
+
+    // Capture mode: callback copies decoded grayscale into fb at (0,0).
+    s_display = _display;
+    s_captureBuf = fb;
+    s_captureW = decW;
+    s_captureH = decH;
+    jpeg->setPixelType(EIGHT_BIT_GRAYSCALE);
+    jpeg->setMaxOutputSize(1);
+    int ok = jpeg->decode(0, 0, decOptions);
+    s_captureBuf = nullptr;
+
+    jpeg->close();
+    delete jpeg;
+    free(buff);
+
+    if (!ok)
+    {
+        Serial.println("[ImageScaler] decodeJpegToGray: decode failed");
+        free(fb);
+        return nullptr;
+    }
+    return fb;
+}
+
+bool ImageScaler::writeScaledCache(const uint8_t *gray, int gw, int gh,
+                                   int outW, int outH, const char *dstPath)
+{
+    if (outW <= 0 || outH <= 0)
+        return false;
+
+    const bool is1Bit = (_display->getDisplayMode() == INKPLATE_1BIT);
+    const uint8_t bitDepth = is1Bit ? 1 : 3;
+    const int pitch = is1Bit ? ((outW + 7) >> 3) : ((outW + 1) >> 1);
+    const size_t payload = (size_t)pitch * outH;
+    const size_t fileLen = PDT_HEADER_SIZE + payload;
+
+    uint8_t *out = (uint8_t *)ps_malloc(fileLen);
+    if (!out)
+    {
+        Serial.println("[ImageScaler] ps_malloc failed for cache buffer");
+        return false;
+    }
+    memset(out, 0, fileLen);
+
+    // Header
+    memcpy(out, PDT_MAGIC, 4);
+    out[4] = bitDepth;
+    out[5] = 0;
+    out[6] = (uint8_t)(outW & 0xFF);
+    out[7] = (uint8_t)((outW >> 8) & 0xFF);
+    out[8] = (uint8_t)(outH & 0xFF);
+    out[9] = (uint8_t)((outH >> 8) & 0xFF);
+    out[10] = 0;
+    out[11] = 0;
+
+    // Area-average + dither directly into the payload region.
+    ditherBlitDownscaled(gray, gw, gh, outW, outH, 0, 0, true, false,
+                         out + PDT_HEADER_SIZE);
+
+    bool ok = sdHandler.saveFile(String(dstPath), (const char *)out, fileLen);
+    free(out);
+    if (!ok)
+        Serial.printf("[ImageScaler] Failed to write cache: %s\n", dstPath);
+    return ok;
+}
+
+bool ImageScaler::generateScaledCache(const char *srcPath, uint8_t scaleFactor)
+{
+    if (!isJpeg(srcPath))
+        return false;
+
+    int origW, origH;
+    if (!sdHandler.getImageDimensions(String(srcPath), origW, origH))
+        return false;
+
+    const int outW = (origW + scaleFactor - 1) / scaleFactor;
+    const int outH = (origH + scaleFactor - 1) / scaleFactor;
+    String dst = deriveCachePath(srcPath, scaleFactor);
+
+    if (!isProgressiveJpeg(srcPath))
+    {
+        // Baseline: decode at full IDCT (memory-capped) and area-average to the
+        // target size — sharp, matches the on-screen quality.
+        const uint32_t CAP_PIXELS = 1500000;
+        uint8_t decScale = 1;
+        int decW = origW, decH = origH;
+        while ((uint32_t)decW * decH > CAP_PIXELS)
+        {
+            decScale <<= 1;
+            decW = (origW + decScale - 1) / decScale;
+            decH = (origH + decScale - 1) / decScale;
+            if (decScale >= 8)
+                break;
+        }
+
+        bool prog;
+        uint8_t *fb = decodeJpegToGray(srcPath, decScale, decW, decH, prog);
+        if (!fb)
+            return false;
+
+        bool ok = writeScaledCache(fb, decW, decH, outW, outH, dst.c_str());
+        free(fb);
+        return ok;
+    }
+    else
+    {
+        // Progressive: JPEGDEC needs large internal buffers, so avoid a big
+        // full-resolution framebuffer. Decode directly at the target scale
+        // (DC-only quality, same as the on-screen result) into a small buffer.
+        Serial.println("[ImageScaler] Caching progressive cover (DC-only quality)");
+        int decW, decH;
+        bool prog;
+        uint8_t *fb = decodeJpegToGray(srcPath, scaleFactor, decW, decH, prog);
+        if (!fb)
+            return false;
+
+        // decW/decH already equal the target size (decoded at this scale).
+        bool ok = writeScaledCache(fb, decW, decH, decW, decH, dst.c_str());
+        free(fb);
+        return ok;
+    }
+}
+
+bool ImageScaler::drawCachedBitmap(const char *cachePath, int x, int y)
+{
+    SdFile f;
+    if (!f.open(cachePath, O_RDONLY))
+        return false;
+
+    uint8_t hdr[PDT_HEADER_SIZE];
+    if (f.read(hdr, PDT_HEADER_SIZE) != PDT_HEADER_SIZE ||
+        memcmp(hdr, PDT_MAGIC, 4) != 0)
+    {
+        f.close();
+        return false;
+    }
+
+    uint8_t bitDepth = hdr[4];
+    int w = hdr[6] | (hdr[7] << 8);
+    int h = hdr[8] | (hdr[9] << 8);
+
+    const bool is1Bit = (_display->getDisplayMode() == INKPLATE_1BIT);
+    // Cache must match the current display bit-depth (baked at generation time).
+    if (bitDepth != (is1Bit ? 1 : 3) || w <= 0 || h <= 0)
+    {
+        f.close();
+        return false;
+    }
+
+    const int pitch = is1Bit ? ((w + 7) >> 3) : ((w + 1) >> 1);
+    uint8_t *rowBuf = (uint8_t *)ps_malloc(pitch);
+    if (!rowBuf)
+    {
+        f.close();
+        return false;
+    }
+
+    Adafruit_GFX *gfx = static_cast<Adafruit_GFX *>(_display);
+    gfx->startWrite();
+    for (int row = 0; row < h; ++row)
+    {
+        if (f.read(rowBuf, pitch) != pitch)
+            break;
+        for (int col = 0; col < w; ++col)
+        {
+            uint8_t val;
+            if (is1Bit)
+                val = (rowBuf[col >> 3] >> (7 - (col & 7))) & 1;
+            else
+                val = (col & 1) ? (rowBuf[col >> 1] & 0x0F)
+                                : ((rowBuf[col >> 1] >> 4) & 0x0F);
+            gfx->writePixel(x + col, y + row, val);
+        }
+    }
+    gfx->endWrite();
+
+    free(rowBuf);
+    f.close();
+    return true;
 }
