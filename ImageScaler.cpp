@@ -70,14 +70,83 @@ uint8_t ImageScaler::pickBestScaleFactor(int origW, int origH, int maxW, int max
     return 8;
 }
 
+void ImageScaler::computeContainFit(int origW, int origH, int maxW, int maxH,
+                                    int &outW, int &outH)
+{
+    // No-upscale "contain" fit: preserve aspect ratio, fit inside maxW x maxH,
+    // never enlarge beyond the original. For portrait covers the height ratio
+    // binds, so the image fills the full available height.
+    if (origW <= 0 || origH <= 0)
+    {
+        outW = origW;
+        outH = origH;
+        return;
+    }
+    if (origW <= maxW && origH <= maxH)
+    {
+        outW = origW; // already fits — native size (no upscale)
+        outH = origH;
+        return;
+    }
+    // scale = min(maxW/origW, maxH/origH) via integer cross-multiplication
+    // Compare maxW*origH vs maxH*origW to find the binding dimension.
+    if ((int64_t)maxW * origH <= (int64_t)maxH * origW)
+    {
+        // width binds
+        outW = maxW;
+        outH = (int)(((int64_t)origH * maxW + origW / 2) / origW);
+    }
+    else
+    {
+        // height binds
+        outH = maxH;
+        outW = (int)(((int64_t)origW * maxH + origH / 2) / origH);
+    }
+    if (outW < 1) outW = 1;
+    if (outH < 1) outH = 1;
+}
+
+uint8_t ImageScaler::chooseDecodeScale(int origW, int origH, int outW, int outH)
+{
+    // Largest pow2 d in {1,2,4,8} keeping the decoded buffer >= target in both
+    // dims (area-average only downscales), then bump if over the memory cap.
+    const uint32_t CAP_PIXELS = 1500000;
+    uint8_t d = 1;
+    while (d < 8)
+    {
+        uint8_t d2 = d << 1;
+        int dw = (origW + d2 - 1) / d2;
+        int dh = (origH + d2 - 1) / d2;
+        if (dw >= outW && dh >= outH)
+            d = d2;
+        else
+            break;
+    }
+    // Enforce memory cap (may drop below target in extreme cases — acceptable).
+    while (d < 8)
+    {
+        int dw = (origW + d - 1) / d;
+        int dh = (origH + d - 1) / d;
+        if ((uint32_t)dw * dh <= CAP_PIXELS)
+            break;
+        d <<= 1;
+    }
+    return d;
+}
+
 bool ImageScaler::getScaledDimensions(const char *path, int maxW, int maxH,
-                                      int &outW, int &outH)
+                                      int &outW, int &outH, bool exactFit)
 {
     int origW, origH;
     if (!sdHandler.getImageDimensions(String(path), origW, origH))
         return false;
 
-    if (isJpeg(path) && (origW > maxW || origH > maxH))
+    if (exactFit && isJpeg(path))
+    {
+        // Aspect-preserving contain fit — the true final size grid covers render at.
+        computeContainFit(origW, origH, maxW, maxH, outW, outH);
+    }
+    else if (isJpeg(path) && (origW > maxW || origH > maxH))
     {
         uint8_t scale = pickBestScaleFactor(origW, origH, maxW, maxH);
         outW = (origW + scale - 1) / scale;
@@ -92,11 +161,44 @@ bool ImageScaler::getScaledDimensions(const char *path, int maxW, int maxH,
 }
 
 bool ImageScaler::drawImageFitTo(const char *path, int x, int y, int maxW, int maxH, uint8_t align,
-                                 bool dither, bool invert, bool andCache)
+                                 bool dither, bool invert, bool andCache, bool exactFit)
 {
     int origW, origH;
     if (!sdHandler.getImageDimensions(String(path), origW, origH))
         return false;
+
+    // Exact-fit (opt-in, used for grid covers): aspect-preserving contain fit to
+    // arbitrary dimensions, maximizing the available height for portrait covers.
+    if (exactFit && isJpeg(path))
+    {
+        int outW, outH;
+        computeContainFit(origW, origH, maxW, maxH, outW, outH);
+
+        int offsetX;
+        switch (align)
+        {
+        case ALIGN_LEFT:   offsetX = 0; break;
+        case ALIGN_RIGHT:  offsetX = (maxW - outW); break;
+        case ALIGN_CENTER:
+        default:           offsetX = (maxW - outW) / 2; break;
+        }
+
+        Serial.printf("[ImageScaler] JPEG %dx%d -> exact-fit %dx%d\n",
+                      origW, origH, outW, outH);
+
+        // Size-keyed cache (baked with dither=true, invert=false).
+        if (andCache && dither && !invert)
+        {
+            String cachePath = deriveCachePathBySize(path, outW, outH);
+            if (!sdHandler.fileExists(cachePath))
+                generateExactCache(path, outW, outH);
+            if (sdHandler.fileExists(cachePath) &&
+                drawCachedBitmap(cachePath.c_str(), x + offsetX, y))
+                return true;
+        }
+
+        return drawJpegToSize(path, x + offsetX, y, outW, outH, dither, invert);
+    }
 
     if (isJpeg(path) && (origW > maxW || origH > maxH))
     {
@@ -604,6 +706,16 @@ String ImageScaler::deriveCachePath(const char *srcPath, uint8_t scaleFactor)
     return base + "_" + String(scaleFactor) + ".pdt";
 }
 
+String ImageScaler::deriveCachePathBySize(const char *srcPath, int outW, int outH)
+{
+    String p = String(srcPath);
+    int dot = p.lastIndexOf('.');
+    int slash = p.lastIndexOf('/');
+    String base = (dot > slash) ? p.substring(0, dot) : p;
+    // Encode the exact output size so the same fit box re-derives the same file.
+    return base + "_" + String(outW) + "x" + String(outH) + ".pdt";
+}
+
 bool ImageScaler::isProgressiveJpeg(const char *path)
 {
     SdFile f;
@@ -825,6 +937,53 @@ bool ImageScaler::generateScaledCache(const char *srcPath, uint8_t scaleFactor)
         free(fb);
         return ok;
     }
+}
+
+bool ImageScaler::drawJpegToSize(const char *path, int x, int y, int outW, int outH,
+                                 bool dither, bool invert)
+{
+    if (outW <= 0 || outH <= 0)
+        return false;
+
+    int origW, origH;
+    if (!sdHandler.getImageDimensions(String(path), origW, origH))
+        return false;
+
+    // Decode at the finest pow2 prescale that stays >= target (and within the
+    // memory cap), then area-average to the exact size and dither/blit.
+    uint8_t decScale = chooseDecodeScale(origW, origH, outW, outH);
+    int decW, decH;
+    bool prog;
+    uint8_t *fb = decodeJpegToGray(path, decScale, decW, decH, prog);
+    if (!fb)
+        return false;
+
+    ditherBlitDownscaled(fb, decW, decH, outW, outH, x, y, dither, invert);
+    free(fb);
+    return true;
+}
+
+bool ImageScaler::generateExactCache(const char *srcPath, int outW, int outH)
+{
+    if (!isJpeg(srcPath) || outW <= 0 || outH <= 0)
+        return false;
+
+    int origW, origH;
+    if (!sdHandler.getImageDimensions(String(srcPath), origW, origH))
+        return false;
+
+    String dst = deriveCachePathBySize(srcPath, outW, outH);
+    uint8_t decScale = chooseDecodeScale(origW, origH, outW, outH);
+
+    int decW, decH;
+    bool prog;
+    uint8_t *fb = decodeJpegToGray(srcPath, decScale, decW, decH, prog);
+    if (!fb)
+        return false;
+
+    bool ok = writeScaledCache(fb, decW, decH, outW, outH, dst.c_str());
+    free(fb);
+    return ok;
 }
 
 bool ImageScaler::drawCachedBitmap(const char *cachePath, int x, int y)
