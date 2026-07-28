@@ -34,7 +34,7 @@ public:
      * The image is centered horizontally within maxW.
      */
     bool drawImageFitTo(const char *path, int x, int y, int maxW, int maxH, uint8_t align = ALIGN_CENTER,
-                        bool dither = true, bool invert = false);
+                        bool dither = true, bool invert = false, bool andCache = false);
 
     /**
      * Get the dimensions the image would have after scaling to fit maxW x maxH.
@@ -51,11 +51,35 @@ public:
     bool drawJpegWithScale(const char *path, int x, int y, uint8_t scaleFactor,
                            bool dither = true, bool invert = false);
 
+    /**
+     * Blit a cached pre-dithered thumbnail (PDT) at (x, y). Returns false if the
+     * file is missing/invalid or its bit-depth doesn't match the display.
+     */
+    bool drawCachedBitmap(const char *cachePath, int x, int y);
+
+    /** Derive the cache path for a source image + scale factor. */
+    static String deriveCachePath(const char *srcPath, uint8_t scaleFactor);
+
 private:
     Inkplate *_display;
 
     static bool isJpeg(const char *path);
+    static bool isProgressiveJpeg(const char *path);
     static uint8_t pickBestScaleFactor(int origW, int origH, int maxW, int maxH);
+
+    // Decode a JPEG into a freshly allocated PSRAM grayscale buffer at the given
+    // decode scale (1/2/4/8). Caller frees. Returns null on failure.
+    uint8_t *decodeJpegToGray(const char *path, uint8_t reqScale,
+                              int &decW, int &decH, bool &isProgressive);
+
+    // Generate (and write) a single pre-dithered cache file for one scale factor,
+    // baked at the current display bit-depth. Used lazily on the first render.
+    bool generateScaledCache(const char *srcPath, uint8_t scaleFactor);
+
+    // Write one cache file at a specific output size from an already-decoded
+    // grayscale buffer (area-averaged + dithered to the display bit-depth).
+    bool writeScaledCache(const uint8_t *gray, int gw, int gh,
+                          int outW, int outH, const char *dstPath);
 
     // JPEGDEC draw callback. Two modes:
     //  - capture mode (s_captureBuf != null): copies decoded grayscale into a
@@ -65,10 +89,13 @@ private:
     static int jpegDrawCallback(JPEGDRAW *pDraw);
 
     // Area-average a full-resolution grayscale buffer down to outW x outH, then
-    // Floyd-Steinberg dither (matching the Inkplate SDK) and blit at (x, y).
+    // Floyd-Steinberg dither (matching the Inkplate SDK). If outRaster is null the
+    // result is blitted to the display at (x, y); otherwise it is packed into
+    // outRaster (1 bpp on 1-bit displays, 4 bpp on 3-bit displays).
     void ditherBlitDownscaled(const uint8_t *gray, int gw, int gh,
                               int outW, int outH, int x, int y,
-                              bool dither, bool invert);
+                              bool dither, bool invert,
+                              uint8_t *outRaster = nullptr);
 
     // Static state for the callback
     static Inkplate *s_display;
