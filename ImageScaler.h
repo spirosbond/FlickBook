@@ -34,15 +34,17 @@ public:
      * The image is centered horizontally within maxW.
      */
     bool drawImageFitTo(const char *path, int x, int y, int maxW, int maxH, uint8_t align = ALIGN_CENTER,
-                        bool dither = true, bool invert = false, bool andCache = false);
+                        bool dither = true, bool invert = false, bool andCache = false, bool exactFit = false);
 
     /**
      * Get the dimensions the image would have after scaling to fit maxW x maxH.
-     * For JPEG: returns dimensions after best-fit scaling.
+     * For JPEG: returns dimensions after best-fit scaling (power-of-two), or, when
+     * exactFit is set, the aspect-preserving contain-fit size (matching how grid
+     * covers are actually rendered).
      * For PNG/BMP: returns original dimensions (no scaling).
      */
     bool getScaledDimensions(const char *path, int maxW, int maxH,
-                             int &outW, int &outH);
+                             int &outW, int &outH, bool exactFit = false);
 
     /**
      * Draw a JPEG with a specific scale factor.
@@ -50,6 +52,13 @@ public:
      */
     bool drawJpegWithScale(const char *path, int x, int y, uint8_t scaleFactor,
                            bool dither = true, bool invert = false);
+
+    /**
+     * Draw a JPEG scaled to exactly outW x outH (aspect ratio is the caller's
+     * responsibility) using the sharp decode -> area-average -> dither pipeline.
+     */
+    bool drawJpegToSize(const char *path, int x, int y, int outW, int outH,
+                        bool dither = true, bool invert = false);
 
     /**
      * Blit a cached pre-dithered thumbnail (PDT) at (x, y). Returns false if the
@@ -60,12 +69,25 @@ public:
     /** Derive the cache path for a source image + scale factor. */
     static String deriveCachePath(const char *srcPath, uint8_t scaleFactor);
 
+    /** Derive the cache path for a source image + explicit output size. */
+    static String deriveCachePathBySize(const char *srcPath, int outW, int outH);
+
 private:
     Inkplate *_display;
 
     static bool isJpeg(const char *path);
     static bool isProgressiveJpeg(const char *path);
     static uint8_t pickBestScaleFactor(int origW, int origH, int maxW, int maxH);
+
+    // No-upscale "contain" fit: the largest outW x outH that fits within
+    // maxW x maxH while preserving aspect ratio, never exceeding the original.
+    static void computeContainFit(int origW, int origH, int maxW, int maxH,
+                                  int &outW, int &outH);
+
+    // Largest power-of-two decode prescale (1/2/4/8) that keeps the decoded
+    // buffer >= the target size in both dims (so area-averaging only downscales),
+    // bumped further if the decoded buffer would exceed the memory cap.
+    static uint8_t chooseDecodeScale(int origW, int origH, int outW, int outH);
 
     // Decode a JPEG into a freshly allocated PSRAM grayscale buffer at the given
     // decode scale (1/2/4/8). Caller frees. Returns null on failure.
@@ -75,6 +97,9 @@ private:
     // Generate (and write) a single pre-dithered cache file for one scale factor,
     // baked at the current display bit-depth. Used lazily on the first render.
     bool generateScaledCache(const char *srcPath, uint8_t scaleFactor);
+
+    // Generate (and write) a pre-dithered cache file at an explicit output size.
+    bool generateExactCache(const char *srcPath, int outW, int outH);
 
     // Write one cache file at a specific output size from an already-decoded
     // grayscale buffer (area-averaged + dithered to the display bit-depth).
