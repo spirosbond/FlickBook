@@ -201,7 +201,7 @@ This keeps the project open source while allowing modification, redistribution, 
 - `/docs` - Build guides and technical documentation
 - `/sdcard` - SD Card contents
 - `/Fonts` - Custom fonts folder
-- '/3D_print_files' - 3D Printing source files
+- `/3D_print_files` - 3D Printing source files
 
 ## Get Involved
 
