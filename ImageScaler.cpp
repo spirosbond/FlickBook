@@ -255,7 +255,7 @@ bool ImageScaler::drawImageFitTo(const char *path, int x, int y, int maxW, int m
             int offsetX = (maxW - origW) / 2;
             x += offsetX;
         }
-        return _display->drawImage(path, x, y, dither, invert);
+        return _display->image.draw(path, x, y, dither, invert);
     }
 }
 

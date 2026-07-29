@@ -264,7 +264,7 @@ bool SDHandler::folderExists(const String &path)
 bool SDHandler::createFolder(const String &parentPath, const String &folderName)
 {
     SdFile parentDir;
-    FatFile newDir;
+    SdFile newDir;
     // if (!parentDir.open(parentPath.c_str(), O_READ)) {
     // Serial.println("Parent directory does not exist: " + parentPath);
 

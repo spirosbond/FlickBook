@@ -2,7 +2,9 @@
 #define EPUB_READER_H
 
 #include <Arduino.h>
-#include <SdFat.h>
+#include <new>
+// SdFat types (SdFile, FatFile) come from InkplateLibrary's bundled SdFat,
+// included transitively via SDHandler.h -> Inkplate.h below.
 #include <unzipLIB.h>
 #include <tinyxml2.h>
 #include <ArduinoJson.h>
@@ -24,7 +26,8 @@ public:
 
 private:
     // SdFat &sd;
-    UNZIP zip; // unzipLIB structure
+    UNZIP *zip = nullptr; // unzipLIB structure (lazily allocated in PSRAM; see ensureZip)
+    bool ensureZip();
     SdFile epubFile;
     bool isOpen;
     // String filename;

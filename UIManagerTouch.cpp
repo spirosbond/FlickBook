@@ -15,17 +15,17 @@ void UIManager::handleTouch()
         snakeGame->update();
         uint8_t n;
         uint16_t x[2], y[2];
-        if (display->tsAvailable() && (n = display->tsGetData(x, y)))
+        if (display->touchscreen.available() && (n = display->touchscreen.getData(x, y)))
         {
             snakeGame->onTouch(x[0], y[0]);
         }
         return;
     }
-    if (display->tsAvailable())
+    if (display->touchscreen.available())
     {
         uint8_t n;
         uint16_t x[2], y[2];
-        n = display->tsGetData(x, y);
+        n = display->touchscreen.getData(x, y);
 
         if (n != 0)
         {

@@ -538,7 +538,7 @@ bool UIManager::drawIcon(String iconName, int x, int y, bool invert)
     }
 
     // Draw the image on the screen
-    if (!display->drawImage(iconPath.c_str(), x, y, 1, invert))
+    if (!display->image.draw(iconPath.c_str(), x, y, 1, invert))
     {
         // Close folder and file
         iconFile.close();
