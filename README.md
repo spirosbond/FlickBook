@@ -27,7 +27,7 @@ The project leverages the InkPlate 6 Flick's excellent recycled e-paper displays
 - **WiFi connectivity** - Over-the-air library management and book upload
 - **Adjustable backlight** - 64 levels of brightness control for any lighting condition
 - **Progress tracking** - Automatically saves and tracks your reading position
-- **Multiple font options** - Choose from serif, sans-serif, bookerly, ember fonts in various sizes (only adjustable from code currently)
+- **Multiple font size options** - Choose from serif, sans-serif, bookerly, ember fonts in various sizes (only adjustable from code currently)
 - **Light & Dark mode** - Choose between Light mode (closest looking like a book) and Dark mode (great for low light)
 - **Image rendering** - Display book covers, illustrations, and diagrams natively
 - **Automatic pagination** - Smart text flow with chapter detection
@@ -36,6 +36,7 @@ The project leverages the InkPlate 6 Flick's excellent recycled e-paper displays
 - **Battery charging** - Built in charging capability
 - **Automatic EPUB indexing** - Fast navigation and page caching
 - **3-D Printable Case** - Case designed and provided for free from Inkplate
+- **Image scaling & caching** - Fast book cover rendering by scaling and caching on SD, using the JPEGDEC library
 
 ### Performance Highlights
 - **Battery life**: Over 1 week of continuous use
@@ -151,6 +152,7 @@ The project leverages the InkPlate 6 Flick's excellent recycled e-paper displays
 
 ### Software Improvements Ideas
 - [x] **WiFi connectivity** - Over-the-air library management and book upload
+- [x] **Book Cover Grid view** - Library overview grid with book cover rendering
 - **Enhanced user settings** - More customization options
 - **Reading statistics** - Track reading speed, time spent, books completed
 - **Note-taking system** - Highlight text and add personal annotations
@@ -159,6 +161,7 @@ The project leverages the InkPlate 6 Flick's excellent recycled e-paper displays
 - **Advanced search** - Full-text search within books and library
 
 ### Hardware Improvement Ideas
+- [x] Custom case for InkPlate Board with minimal bezels
 - Custom PCB design for even smaller form factor
 - Solar charging integration for indefinite battery life
 - Improved case design with better ergonomics
@@ -170,6 +173,8 @@ The project leverages the InkPlate 6 Flick's excellent recycled e-paper displays
 - **TinyXML2** by Lee Thomason - Lightweight XML parsing library enabling EPUB file processing
 - **Arduino Community** - For the development environment and extensive documentation
 - **Espressif** - ESP32 microcontroller and development frameworks
+- **JPEGDEC** by Larry Bank - Super optimized JPEG Decoding library
+- **New Case** by ctasos - Minimal bezel case for Inkplate 6 Flick board
 
 ### Development Tools
 - **Arduino IDE** - Primary development environment
@@ -196,6 +201,7 @@ This keeps the project open source while allowing modification, redistribution, 
 - `/docs` - Build guides and technical documentation
 - `/sdcard` - SD Card contents
 - `/Fonts` - Custom fonts folder
+- '/3D_print_files' - 3D Printing source files
 
 ## Get Involved
 
