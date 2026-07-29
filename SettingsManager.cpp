@@ -139,6 +139,14 @@ void SettingsManager::setBacklight(uint8_t value, bool apply)
       display->frontlight.setBrightness(backlight);
     }
   }
+  else if (value > BACKLIGHT_L5)
+  {
+    backlight = BACKLIGHT_L5;
+    if (apply)
+    {
+      display->setFrontlight(backlight);
+    }
+  }
   else
   {
     backlight = 0;

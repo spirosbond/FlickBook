@@ -183,7 +183,12 @@ Special thanks to the open-source hardware community for inspiration and the exi
 
 ## License and Open Source
 
-This project is released under an open-source license, encouraging modification, redistribution, and community contribution. All source code, documentation, and design files will be made available through public repositories.
+This project is licensed under the **GNU General Public License v3.0 or later**.
+
+- SPDX identifier: **GPL-3.0-or-later**
+- License file: [`LICENSE`](./LICENSE)
+
+This keeps the project open source while allowing modification, redistribution, and commercial use under the terms of the GPL.
 
 **Repository Structure:**
 - `/ebook_reader.ino` - Main Arduino project
