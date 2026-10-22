@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>FlickBook twin</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #333; color: #eee; margin: 0; display: flex; gap: 16px; padding: 16px; }
+  #panel { background: #fff; cursor: crosshair; user-select: none; -webkit-user-drag: none; max-height: calc(100vh - 32px); }
+  #side { min-width: 260px; font-size: 13px; }
+  button { margin: 2px; }
+  pre { white-space: pre-wrap; background: #222; padding: 6px; max-height: 50vh; overflow: auto; }
+</style>
+</head>
+<body>
+<img id="panel" src="/screen.png" draggable="false" alt="e-paper panel">
+<div id="side">
+  <h3>FlickBook digital twin</h3>
+  <div>
+    <button data-dir="left">swipe ←</button><button data-dir="right">swipe →</button>
+    <button data-dir="up">swipe ↑</button><button data-dir="down">swipe ↓</button>
+  </div>
+  <div>
+    <label><input type="checkbox" id="fl"> show frontlight</label>
+    <label><input type="checkbox" id="fb"> show framebuffer (not yet refreshed)</label>
+  </div>
+  <div>battery V <input id="bat" type="number" step="0.05" value="4.05" style="width:5em"> <button id="setbat">set</button></div>
+  <div><button id="idle">run until idle</button> <button id="reset">reset</button></div>
+  <pre id="state"></pre>
+  <pre id="log"></pre>
+</div>
+<script>
+const img = document.getElementById('panel');
+let frame = -1, logNext = 0, down = null;
+
+async function cmd(o) {
+  const r = await fetch('/api/cmd', { method: 'POST', body: JSON.stringify(o) });
+  return r.json();
+}
+function toPanel(ev) {
+  const r = img.getBoundingClientRect();
+  return [Math.round((ev.clientX - r.left) * img.naturalWidth / r.width),
+          Math.round((ev.clientY - r.top) * img.naturalHeight / r.height)];
+}
+img.addEventListener('mousedown', ev => { down = { p: toPanel(ev), t: performance.now() }; ev.preventDefault(); });
+img.addEventListener('mouseup', async ev => {
+  if (!down) return;
+  const [x1, y1] = toPanel(ev), [x0, y0] = down.p, held = performance.now() - down.t;
+  down = null;
+  if (Math.hypot(x1 - x0, y1 - y0) > 40) await cmd({ cmd: 'swipe', x0, y0, x1, y1, duration_ms: 150 });
+  else if (held > 800) await cmd({ cmd: 'long_press', x: x0, y: y0, hold_ms: Math.round(held) });
+  else await cmd({ cmd: 'tap', x: x0, y: y0 });
+  refresh(true);
+});
+document.querySelectorAll('[data-dir]').forEach(b =>
+  b.onclick = async () => { await cmd({ cmd: 'swipe', direction: b.dataset.dir }); refresh(true); });
+document.getElementById('setbat').onclick = () => cmd({ cmd: 'set_battery', volts: parseFloat(document.getElementById('bat').value) });
+document.getElementById('idle').onclick = async () => { await cmd({ cmd: 'run_until_idle' }); refresh(true); };
+document.getElementById('reset').onclick = async () => { await cmd({ cmd: 'reset' }); frame = -1; logNext = 0; document.getElementById('log').textContent = ''; setTimeout(() => refresh(true), 1500); };
+document.getElementById('fl').onchange = () => refresh(true);
+document.getElementById('fb').onchange = () => refresh(true);
+
+async function refresh(force) {
+  try {
+    const s = await (await fetch('/api/state')).json();
+    document.getElementById('state').textContent = JSON.stringify(s, null, 1);
+    if (force || s.frame !== frame) {
+      frame = s.frame;
+      const q = new URLSearchParams({ t: Date.now() });
+      if (document.getElementById('fl').checked) q.set('frontlight', '1');
+      if (document.getElementById('fb').checked) q.set('source', 'framebuffer');
+      img.src = '/screen.png?' + q;
+    }
+    const l = await cmd({ cmd: 'get_serial_log', since: logNext });
+    if (l.ok) {
+      logNext = l.next;
+      const el = document.getElementById('log');
+      el.textContent = (el.textContent + l.text).slice(-20000);
+      el.scrollTop = el.scrollHeight;
+    }
+  } catch (e) { /* twin restarting */ }
+}
+setInterval(refresh, 500);
+refresh(true);
+</script>
+</body>
+</html>
