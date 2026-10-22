@@ -9,6 +9,7 @@
 //   --window         SDL2 window (if built with TWIN_WITH_SDL)
 //
 // See twin/README.md and twin/AGENTS.md.
+#include <execinfo.h>
 #include <poll.h>
 #include <signal.h>
 #include <unistd.h>
@@ -276,6 +277,21 @@ void cleanup()
 
 void onSignal(int) { g_stop = 1; }
 
+// The equivalent of an ESP32 "Guru Meditation": report the crash (with a raw
+// backtrace) on stderr so agents see it, then die with the original signal.
+void onCrash(int sig)
+{
+    static const char msg[] = "\n[twin] FIRMWARE CRASH (Guru Meditation equivalent): fatal signal ";
+    (void)!write(2, msg, sizeof(msg) - 1);
+    char num[4] = {char('0' + (sig / 10) % 10), char('0' + sig % 10), '\n', 0};
+    (void)!write(2, num, 3);
+    void *frames[64];
+    int n = backtrace(frames, 64);
+    backtrace_symbols_fd(frames, n, 2);
+    signal(sig, SIG_DFL);
+    raise(sig);
+}
+
 void emitReady(FILE *out)
 {
     agent::Control ignored;
@@ -331,6 +347,8 @@ int main(int argc, char **argv)
     signal(SIGINT, onSignal);
     signal(SIGTERM, onSignal);
     signal(SIGPIPE, SIG_IGN);
+    for (int sig : {SIGSEGV, SIGBUS, SIGFPE, SIGILL, SIGABRT})
+        signal(sig, onCrash);
 
     if (!prepareSd(o))
     {

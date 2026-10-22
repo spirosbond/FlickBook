@@ -1,0 +1,18 @@
+{
+  "name": "read_book_swipes",
+  "description": "Open 'The Keeper's Almanac', swipe left 3 times (next page) and compare against golden.",
+  "steps": [
+    {"cmd": "tap", "x": 630, "y": 250, "comment": "third library entry"},
+    {"expect": "serial_contains", "text": "Touch Release with Touch Active", "scope": "last"},
+    {"expect": "golden", "name": "book_page1"},
+    {"cmd": "swipe", "direction": "left", "repeat": 3},
+    {"expect": "refresh", "kind": "partial", "min": 1, "scope": "last", "modes": ["1bit"],
+     "comment": "1-bit page turns use partialUpdate()"},
+    {"expect": "refresh", "kind": "full", "min": 3, "scope": "last", "modes": ["3bit"],
+     "comment": "3-bit grayscale has no partial update: every page turn is a full refresh"},
+    {"expect": "golden", "name": "book_page4"},
+    {"cmd": "swipe", "direction": "right"},
+    {"expect": "golden", "name": "book_page3"},
+    {"expect": "no_warnings"}
+  ]
+}
