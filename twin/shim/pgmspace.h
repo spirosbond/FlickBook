@@ -25,11 +25,7 @@
 #ifndef pgm_read_ptr
 #define pgm_read_ptr(addr) (*(void *const *)(addr))
 #endif
-// GFXfont / glyph pointers are read with pgm_read_pointer; on the host they are
-// 64-bit, so read a full pointer rather than a 32-bit dword.
-#ifndef pgm_read_pointer
-#define pgm_read_pointer(addr) (*(void *const *)(addr))
-#endif
+// pgm_read_pointer is left to Adafruit_GFX/Graphics.h (only used on __AVR__).
 #define memcpy_P memcpy
 #define memcmp_P memcmp
 #define strcpy_P strcpy

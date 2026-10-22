@@ -1,0 +1,83 @@
+{
+  "calls": {
+    "Serial": [
+      "begin",
+      "print",
+      "printf",
+      "println"
+    ],
+    "Inkplate": [
+      "begin",
+      "clearDisplay",
+      "display",
+      "drawRect",
+      "drawRoundRect",
+      "drawThickLine",
+      "fillRect",
+      "fillRoundRect",
+      "fillTriangle",
+      "getCursorY",
+      "getDisplayMode",
+      "getTextBounds",
+      "height",
+      "partialUpdate",
+      "print",
+      "readBattery",
+      "sdCardInit",
+      "setCursor",
+      "setFont",
+      "setFullUpdateThreshold",
+      "setRotation",
+      "setTextColor",
+      "setTextSize",
+      "setTextWrap",
+      "width"
+    ],
+    "Frontlight": [
+      "setBrightness",
+      "setState"
+    ],
+    "Touchscreen": [
+      "available",
+      "getData",
+      "init"
+    ],
+    "WiFi": [
+      "softAP",
+      "softAPIP",
+      "softAPdisconnect"
+    ],
+    "WebServer": [
+      "arg",
+      "begin",
+      "client",
+      "handleClient",
+      "hasArg",
+      "on",
+      "onNotFound",
+      "send",
+      "sendHeader",
+      "setContentLength",
+      "stop",
+      "upload"
+    ],
+    "DNSServer": [
+      "processNextRequest",
+      "start",
+      "stop"
+    ]
+  },
+  "includes": [
+    "Arduino.h",
+    "ArduinoJson.h",
+    "DNSServer.h",
+    "Inkplate.h",
+    "WebServer.h",
+    "WiFi.h",
+    "functional",
+    "new",
+    "tinyxml2.h",
+    "unzipLIB.h",
+    "vector"
+  ]
+}

@@ -3,6 +3,7 @@
 
 #include <cstdio>
 #include <cstring>
+#include <filesystem>
 
 #include "panel.h"
 #include "twin.h"
@@ -178,6 +179,10 @@ std::vector<uint8_t> encodePngRgb(int w, int h, const std::vector<uint8_t> &rgb)
 bool writePng(const std::string &path, const Image &img)
 {
     auto data = encodePng(img);
+    std::error_code ec;
+    auto parent = std::filesystem::path(path).parent_path();
+    if (!parent.empty())
+        std::filesystem::create_directories(parent, ec);
     FILE *f = fopen(path.c_str(), "wb");
     if (!f)
         return false;
