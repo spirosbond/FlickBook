@@ -33,7 +33,7 @@ const img = document.getElementById('panel');
 let frame = -1, logNext = 0, down = null;
 
 async function cmd(o) {
-  const r = await fetch('/api/cmd', { method: 'POST', body: JSON.stringify(o) });
+  const r = await fetch('/api/cmd', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(o) });
   return r.json();
 }
 function toPanel(ev) {

@@ -51,7 +51,7 @@ Every command is also available as `t.call("<cmd>", **args)`. Interaction
 commands run the firmware until it is idle, then return. Idle means no
 refresh, serial output or touch for 400 ms of virtual time.
 
-### Commands (JSON lines on `--stdio`, or `POST /api/cmd` with `--http`)
+### Commands (JSON lines on `--stdio`, or `POST /api/cmd` with `Content-Type: application/json` on `--http`)
 
 | Command | Arguments | Result |
 |---------|-----------|--------|

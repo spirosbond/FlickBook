@@ -48,3 +48,42 @@ def test_upload_list_download_delete():
         status, _ = _req(base + "/api/delete?path=/books/hello.txt", method="DELETE")
         assert status == 200
         assert not (sd / "books" / "hello.txt").exists()
+
+
+def test_http_agent_api_and_viewer():
+    import subprocess
+    import time
+    import urllib.error
+
+    from flicktwin import default_binary
+
+    port = free_port()
+    proc = subprocess.Popen([default_binary(False), "--http", str(port), "--quiet"],
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        base = "http://127.0.0.1:%d" % port
+        for _ in range(100):
+            try:
+                status, body = _req(base + "/api/state")
+                break
+            except (urllib.error.URLError, ConnectionError):
+                time.sleep(0.1)
+        assert status == 200 and "time_ms" in json.loads(body)
+        status, body = _req(base + "/")
+        assert status == 200 and b"/api/cmd" in body
+        status, body = _req(base + "/screen.png")
+        assert status == 200 and body[:8] == b"\x89PNG\r\n\x1a\n"
+
+        cmd = json.dumps({"cmd": "tap", "x": 630, "y": 250}).encode()
+        status, body = _req(base + "/api/cmd", cmd, "POST", {"Content-Type": "application/json"})
+        assert status == 200 and json.loads(body)["ok"]
+
+        # Cross-site "simple" requests (no JSON content type) are refused.
+        try:
+            _req(base + "/api/cmd", cmd, "POST", {"Content-Type": "text/plain"})
+            raise AssertionError("text/plain command was accepted")
+        except urllib.error.HTTPError as e:
+            assert e.code == 415
+    finally:
+        proc.terminate()
+        proc.wait(timeout=10)

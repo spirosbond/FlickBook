@@ -54,7 +54,14 @@ void serve(int fd, agent::Control &ctl)
     }
     else if (req.method == "POST" && req.path == "/api/cmd")
     {
-        http::sendResponse(fd, 200, "application/json", agent::handle(req.body, ctl), noCache);
+        // Commands can write files (screenshot path) and swap the SD card, so
+        // only accept application/json: browsers must preflight that from
+        // other origins, and the twin never grants CORS.
+        auto ct = req.headers.find("content-type");
+        if (ct == req.headers.end() || ct->second.rfind("application/json", 0) != 0)
+            http::sendResponse(fd, 415, "text/plain", "Content-Type must be application/json");
+        else
+            http::sendResponse(fd, 200, "application/json", agent::handle(req.body, ctl), noCache);
     }
     else
     {
