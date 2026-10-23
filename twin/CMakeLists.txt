@@ -76,6 +76,28 @@ set(UNZIP_SOURCES ${UNZIP_C_SOURCES} "${unziplib_SOURCE_DIR}/src/unzipLIB.cpp")
 
 # ------------------------------------------------------------- firmware ---
 file(GLOB FIRMWARE_CPP CONFIGURE_DEPENDS "${FLICKBOOK_DIR}/*.cpp")
+
+# ImageScaler includes libs/JPEGDEC.cpp relative to its own source directory.
+# Stage that translation unit so only the host build uses the decoder workaround.
+set(JPEG_STAGE "${CMAKE_CURRENT_BINARY_DIR}/jpegdec")
+file(MAKE_DIRECTORY "${JPEG_STAGE}/libs")
+configure_file("${FLICKBOOK_DIR}/ImageScaler.cpp" "${JPEG_STAGE}/ImageScaler.cpp" COPYONLY)
+foreach(_jpeg_file JPEGDEC.cpp JPEGDEC.h jpeg_inl.h)
+  configure_file("${FLICKBOOK_DIR}/libs/${_jpeg_file}" "${JPEG_STAGE}/libs/${_jpeg_file}" COPYONLY)
+endforeach()
+file(READ "${JPEG_STAGE}/libs/jpeg_inl.h" _jpeg_decoder)
+set(_jpeg_skip_original "signed short *pMCU = &pJPEG->sMCUs[iMCU & 0xffffff];")
+set(_jpeg_skip_host
+    "signed short skippedMCU[DCTSIZE] = {};\n    signed short *pMCU = iMCU < 0 ? skippedMCU : &pJPEG->sMCUs[iMCU];")
+string(FIND "${_jpeg_decoder}" "${_jpeg_skip_original}" _jpeg_skip_offset)
+if(_jpeg_skip_offset EQUAL -1)
+  message(FATAL_ERROR "JPEGDEC progressive skip workaround no longer matches; review the twin's build-local patch")
+endif()
+string(REPLACE "${_jpeg_skip_original}" "${_jpeg_skip_host}" _jpeg_decoder "${_jpeg_decoder}")
+file(WRITE "${JPEG_STAGE}/libs/jpeg_inl.h" "${_jpeg_decoder}")
+list(REMOVE_ITEM FIRMWARE_CPP "${FLICKBOOK_DIR}/ImageScaler.cpp")
+list(APPEND FIRMWARE_CPP "${JPEG_STAGE}/ImageScaler.cpp")
+
 # The sketch is compiled as C++ through a generated wrapper (like arduino-cli does).
 set(FIRMWARE_INO "${CMAKE_CURRENT_BINARY_DIR}/ebook_reader_ino.cpp")
 file(WRITE "${FIRMWARE_INO}.in" "#include <Arduino.h>\n#include \"${FLICKBOOK_DIR}/ebook_reader.ino\"\n")

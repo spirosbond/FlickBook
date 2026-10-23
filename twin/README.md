@@ -51,6 +51,13 @@ To build a firmware checkout somewhere else, pass `-DFLICKBOOK_DIR=/path/to/Flic
 To move the twin into its own repository, add FlickBook as a git submodule
 and point `FLICKBOOK_DIR` at it.
 
+### Host-only JPEGDEC workaround
+
+`libs/jpeg_inl.h` indexes far out of bounds when skipping progressive JPEG
+blocks (`iMCU & 0xffffff`). The ESP32 tolerates the stray write; 64-bit Linux
+crashes. CMake patches a copy in `build/jpegdec/` only; `libs/` and device
+builds are unchanged.
+
 ## Run
 
 ```sh

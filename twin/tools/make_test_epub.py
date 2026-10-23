@@ -11,6 +11,7 @@ Books:
   twin_gallery.epub     - cover image + an inline JPEG (ImageScaler / JPEGDEC path)
   twin_edge_cases.epub  - typographic quotes, accents, nested inline tags, a very long word,
                           an empty chapter, OEBPS/ sub-directory layout
+  twin_progressive.epub - 1400x2128 progressive cover (JPEGDEC progressive path)
 """
 import math
 import random
@@ -106,11 +107,12 @@ def encode_value(v):
     return size, (v if v > 0 else v + (1 << size) - 1)
 
 
-def jpeg_gray(width, height, pixel):
-    """Encode a baseline 4:4:4 YCbCr JPEG with neutral chroma; pixel(x, y) -> luma 0..255.
+def jpeg_gray(width, height, pixel, progressive=False):
+    """Encode a 4:4:4 YCbCr JPEG with neutral chroma; pixel(x, y) -> luma 0..255.
 
     Three components are used (rather than a 1-component grayscale JPEG) because the
-    Inkplate library's TJpgDec decoder only supports Y/Cb/Cr JPEGs - like most EPUBs ship."""
+    Inkplate library's TJpgDec decoder only supports Y/Cb/Cr JPEGs - like most EPUBs ship.
+    Progressive fixtures contain a DC-only scan, matching JPEGDEC's supported output."""
     dc_codes, ac_codes = huff_codes(DC_BITS, DC_VALS), huff_codes(AC_BITS, AC_VALS)
     cos = [[math.cos((2 * x + 1) * u * math.pi / 16) for x in range(8)] for u in range(8)]
     bw, prev_dc = BitWriter(), [0, 0, 0]
@@ -120,6 +122,8 @@ def jpeg_gray(width, height, pixel):
         prev_dc[comp] = zz[0]
         bw.write(*dc_codes[size])
         bw.write(bits, size)
+        if progressive:
+            return
         run = 0
         for i in range(1, 64):
             if zz[i] == 0:
@@ -140,8 +144,8 @@ def jpeg_gray(width, height, pixel):
         for bx in range(0, width, 8):
             block = [[pixel(min(bx + x, width - 1), min(by + y, height - 1)) - 128 for x in range(8)] for y in range(8)]
             coeffs = [0] * 64
-            for v in range(8):
-                for u in range(8):
+            for v in range(1 if progressive else 8):
+                for u in range(1 if progressive else 8):
                     s = sum(block[y][x] * cos[u][x] * cos[v][y] for y in range(8) for x in range(8))
                     cu = 1 / math.sqrt(2) if u == 0 else 1
                     cv = 1 / math.sqrt(2) if v == 0 else 1
@@ -157,11 +161,13 @@ def jpeg_gray(width, height, pixel):
     out = b"\xFF\xD8"
     out += seg(0xE0, b"JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00")
     out += seg(0xDB, b"\x00" + bytes(LUMA_Q[ZIGZAG[i]] for i in range(64)))
-    out += seg(0xC0, struct.pack(">BHHB", 8, height, width, 3) + b"\x01\x11\x00\x02\x11\x00\x03\x11\x00")
+    out += seg(0xC2 if progressive else 0xC0,
+               struct.pack(">BHHB", 8, height, width, 3) + b"\x01\x11\x00\x02\x11\x00\x03\x11\x00")
     for tid in (0, 1):  # identical luma/chroma tables (ids 0 and 1)
         out += seg(0xC4, bytes([0x00 | tid]) + bytes(DC_BITS) + bytes(DC_VALS))
         out += seg(0xC4, bytes([0x10 | tid]) + bytes(AC_BITS) + bytes(AC_VALS))
-    out += seg(0xDA, b"\x03\x01\x00\x02\x11\x03\x11\x00\x3F\x00")
+    out += seg(0xDA, b"\x03\x01\x00\x02\x11\x03\x11" +
+               (b"\x00\x00\x00" if progressive else b"\x00\x3F\x00"))
     return out + bytes(bw.out) + b"\xFF\xD9"
 
 
@@ -245,6 +251,13 @@ def main(out_dir):
     write_epub(out / "twin_gallery.epub", "Twin Gallery", "FlickBook Twin", gallery,
                images=[("cover-image", "images/cover.jpg", cover, "image/jpeg"),
                        ("checker", "images/checker.jpg", inline, "image/jpeg")],
+               cover_id="cover-image")
+
+    progressive = jpeg_gray(1400, 2128, lambda x, y: 240 if (x // 160 + y // 240) % 2 else 30,
+                            progressive=True)
+    write_epub(out / "twin_progressive.epub", "Progressive Cover", "FlickBook Twin",
+               [("cov", "cover.xhtml", xhtml("Cover", '<img src="images/cover.jpg"/>'))],
+               images=[("cover-image", "images/cover.jpg", progressive, "image/jpeg")],
                cover_id="cover-image")
 
     edge = [

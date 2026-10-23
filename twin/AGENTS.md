@@ -38,7 +38,7 @@ import sys; sys.path.insert(0, "twin/python")
 from flicktwin import Twin
 
 with Twin() as t:                     # Twin(grayscale=True) for the 3-bit build
-    t.tap(630, 250)                   # open the third library book
+    t.tap(100, 680)                   # open the fourth library book
     for _ in range(3):
         t.swipe("left")               # next page (direction = finger movement)
     t.screenshot("/tmp/page4.png")
@@ -85,7 +85,7 @@ same as the firmware UI code (`UIManager.h`). Refresh-event `kind` is one of:
 
 | Target | Coordinates |
 |--------|-------------|
-| Library books 1 / 2 / 3: Edge Cases / Twin Gallery / Keeper's Almanac | (100,250) / (330,250) / (630,250) |
+| Library books 1 / 2 / 3 / 4: Edge Cases / Twin Gallery / Progressive Cover / Keeper's Almanac | (100,250) / (330,250) / (630,250) / (100,680) |
 | Settings gear | (662,30) |
 | Settings tabs 1 / 2 / 3 | (100,150) / (200,150) / (300,150) |
 | Dark mode toggle (tab 1) | (670,450) |
@@ -156,7 +156,7 @@ example `-- --battery 3.3`.
 
 | Area | Modelled | Not modelled or approximate |
 |------|----------|----------------------------|
-| Firmware logic | All application sources, compiled unmodified, plus the real ArduinoJson, tinyxml2, unzipLIB, JPEGDEC, qrcode and Inkplate graphics/image decoders | ESP32 compiler differences (int sizes, `char` signedness, `-O2` vs. host UB) |
+| Firmware logic | All application sources, compiled unmodified, plus the real ArduinoJson, tinyxml2, unzipLIB, JPEGDEC (one host-only patch, see Firmware-side notes), qrcode and Inkplate graphics/image decoders | ESP32 compiler differences (int sizes, `char` signedness, `-O2` vs. host UB) |
 | Display | 1024×758 panel, rotation, 1-bit and 3-bit modes; full and partial refresh semantics; `setFullUpdateThreshold`; optional ghosting after partial updates; approximate refresh durations (1.1 s / 1.7 s / 0.3 s) added to the virtual clock | Real waveforms, temperature dependence, exact gray levels and timing, TPS65186 power sequencing |
 | Touch | `touchscreen.init/available/getData`, `tsAvailable/tsGetData`, taps, swipes, long presses, raw samples at a 15 ms report rate | Controller quirks (noise, multi-touch ghosts, report-rate jitter, palm rejection) |
 | Frontlight | `setState`, `setBrightness(0..63)` as a warm overlay in screenshots | Light uniformity, PWM behaviour |
@@ -199,3 +199,7 @@ runs in CI and in pytest. When the firmware starts to use something new:
 - The Inkplate library's JPEG decoder (TJpgDec) only supports YCbCr JPEGs.
   Single-channel grayscale JPEGs fail with "Failed to render image!" on the
   device and in the twin. The fixture generator therefore writes YCbCr files.
+- The twin builds a patched copy of `libs/jpeg_inl.h` (in `build/jpegdec/`):
+  skipped progressive JPEG blocks write ~32 MB out of bounds. The ESP32
+  tolerates this; the host crashes. `libs/` is unchanged; do not "fix" it there
+  just for the twin.

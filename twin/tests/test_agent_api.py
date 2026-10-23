@@ -9,7 +9,7 @@ from flicktwin import Twin, TwinError, read_png
 
 
 def _session(t):
-    t.tap(630, 250)
+    t.tap(100, 680)
     t.swipe("left")
     t.swipe("left")
     return t.framebuffer_hash(), t.get_state()["time_ms"], [e["kind"] for e in t.refresh_events()]
@@ -52,7 +52,7 @@ def test_unknown_command_is_an_error(twin):
 
 
 def test_partial_updates_and_full_refresh_promotion(twin):
-    twin.tap(630, 250)
+    twin.tap(100, 680)
     since = twin.refresh_events()[-1]["seq"] + 1
     for _ in range(10):
         twin.swipe("left")
@@ -65,12 +65,12 @@ def test_partial_updates_and_full_refresh_promotion(twin):
 def test_reset_restarts_with_fresh_sd(twin):
     sd = Path(twin.get_state()["sd_root"])
     (sd / "books" / "scratch.txt").write_text("x")
-    twin.tap(630, 250)
+    twin.tap(100, 680)
     twin.reset()
     s = twin.get_state()
     assert s["time_ms"] < 5000
     assert not (Path(s["sd_root"]) / "books" / "scratch.txt").exists()
-    assert "Total: 3" in twin.serial_log()
+    assert "Total: 4" in twin.serial_log()
 
 
 def test_load_sdcard(twin, tmp_path):

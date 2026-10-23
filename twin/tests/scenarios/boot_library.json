@@ -2,7 +2,7 @@
   "name": "boot_library",
   "description": "Boot with the fixture books and land on the library screen (milestone 1).",
   "steps": [
-    {"expect": "serial_contains", "text": "Finished loadLibrary(). Total: 3"},
+    {"expect": "serial_contains", "text": "Finished loadLibrary(). Total: 4"},
     {"expect": "serial_contains", "text": "Touchscreen init ok"},
     {"expect": "refresh", "kind": "full", "min": 1},
     {"expect": "golden", "name": "library"},

@@ -2,7 +2,7 @@
   "name": "read_book_swipes",
   "description": "Open 'The Keeper's Almanac', swipe left 3 times (next page) and compare against golden.",
   "steps": [
-    {"cmd": "tap", "x": 630, "y": 250, "comment": "third library entry"},
+    {"cmd": "tap", "x": 100, "y": 680, "comment": "fourth library entry"},
     {"expect": "serial_contains", "text": "Touch Release with Touch Active", "scope": "last"},
     {"expect": "golden", "name": "book_page1"},
     {"cmd": "swipe", "direction": "left", "repeat": 3},
