@@ -48,6 +48,28 @@ The project leverages the InkPlate 6 Flick's excellent recycled e-paper displays
 
 ## Images and Videos Section
 
+### **FlickBook Interface:**
+- Main library browser showing book collection
+- Reading interface with text and image rendering
+- Settings menu with backlight controls and other features
+- Progress tracking and chapter navigation
+
+<p float="left">
+   <img src="media/library-mockup.png" alt="Reading Page" width="400"/>
+   <img src="media/library-black-mockup.png" alt="Reading Page" width="400"/>
+   <img src="media/reading-page-front-black-mockup.png" alt="Library" width="400"/>
+   <img src="media/reading-page-front-mockup.png" alt="Library" width="400"/>
+   <img src="media/reading page-1-mockup.png" alt="Library" width="400"/>
+   <img src="media/settings-1-mockup.png" alt="Settings" width="400"/>
+   <img src="media/settings-webserver-mockup.png" alt="Settings" width="400"/>
+</p>
+
+### **Video Demos:**
+
+<p float="left">
+   <img src="media/library-reading.gif" alt="Library & Reading" width="300"/>
+   <img src="media/dark-mode.gif" alt="Dark Mode" width="300"/>
+</p>
 
 ### **Hardware Overview:**
 - InkPlate 6 Flick board with e-paper display
@@ -55,28 +77,11 @@ The project leverages the InkPlate 6 Flick's excellent recycled e-paper displays
 - Touch-responsive screen surface
 - More info [at Inkplate Docs](https://soldered.com/documentation/inkplate/6flick/overview/)
 
-<img src="media/ink6-1.jpg" alt="Inkplate 6 Flick" width="450"/>
-<img src="media/ink6-2.jpg" alt="Inkplate 6 Flick" width="450"/>
-<img src="media/ink6-3.jpg" alt="Inkplate 6 Flick" width="450"/>
-
-### **Software Interface:**
-- Main library browser showing book collection
-- Reading interface with text and image rendering
-- Settings menu with backlight controls and other features
-- Progress tracking and chapter navigation
-
-<img src="media/reading page-3.png" alt="Reading Page" width="900"/>
-<img src="media/library-2.png" alt="Library" width="450"/>
-<!-- <img src="media/settings-2.png" alt="Settings" width="600"/> -->
-<img src="media/settings-3.png" alt="Settings" width="450"/>
-
-
-### **Video Demos:**
-
-<img src="media/reading page.gif" alt="Reading Page" width="300"/>
-<img src="media/library.gif" alt="Library" width="300"/>
-<!-- <img src="media/settings-2.png" alt="Settings" width="600"/> -->
-<img src="media/settings.gif" alt="Settings" width="300"/>
+<p float="left">
+   <img src="media/ink6-1.jpg" alt="Inkplate 6 Flick" width="400"/>
+   <img src="media/ink6-2.jpg" alt="Inkplate 6 Flick" width="400"/>
+   <img src="media/ink6-3.jpg" alt="Inkplate 6 Flick" width="400"/>
+</p>
 
 ## Components List
 
@@ -150,6 +155,9 @@ The project leverages the InkPlate 6 Flick's excellent recycled e-paper displays
 
 ### Developing Without a Device (Digital Twin)
 The [`twin/`](twin/README.md) directory builds the unmodified firmware for your PC. It simulates the e-paper panel, touch, frontlight, battery, SD card and web server. Run it in a window, headless, in the browser, or drive it from scripts and AI agents. It includes deterministic scenario tests with golden images. See [`twin/README.md`](twin/README.md) and [`twin/AGENTS.md`](twin/AGENTS.md).
+
+<img src="media/flickbook-twin.png" alt="Flickbook Twin" width="900"/>
+
 
 ## Future Development Roadmap
 
