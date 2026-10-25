@@ -217,13 +217,16 @@ This project is licensed under the **GNU General Public License v3.0 or later**.
 
 This keeps the project open source while allowing modification, redistribution, and commercial use under the terms of the GPL.
 
-**Repository Structure:**
+## Repository Structure
+
 - `/ebook_reader.ino` - Main Arduino project
 - `/libs` - Custom library implementations
 - `/docs` - Build guides and technical documentation
 - `/sdcard` - SD Card contents
 - `/Fonts` - Custom fonts folder
 - `/3D_print_files` - 3D Printing source files
+- `/media` - Screenshots, photos, GIFs and demo videos used in this README
+- `/twin` - Digital twin: host build of the firmware with a simulated Inkplate 6 Flick (see [`twin/README.md`](twin/README.md))
 
 ## Get Involved
 
