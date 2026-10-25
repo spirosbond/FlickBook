@@ -2,8 +2,11 @@
 
 #include <ArduinoJson.h>
 
+#include <cstdio>
 #include <filesystem>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "Inkplate.h"
 #include "panel.h"
@@ -89,6 +92,34 @@ bool maybeWait(JsonVariantConst req, JsonDocument &res)
     return true;
 }
 
+// JSON string literal for values appended after serialization.
+std::string jsonString(const std::string &s)
+{
+    std::string out = "\"";
+    out.reserve(s.size() + 2);
+    for (unsigned char c : s)
+    {
+        switch (c)
+        {
+        case '"': out += "\\\""; break;
+        case '\\': out += "\\\\"; break;
+        case '\n': out += "\\n"; break;
+        case '\r': out += "\\r"; break;
+        case '\t': out += "\\t"; break;
+        default:
+            if (c < 0x20)
+            {
+                char buf[8];
+                snprintf(buf, sizeof(buf), "\\u%04x", c);
+                out += buf;
+            }
+            else
+                out += (char)c;
+        }
+    }
+    return out + "\"";
+}
+
 std::string error(const std::string &msg)
 {
     JsonDocument res;
@@ -109,6 +140,9 @@ std::string handle(const std::string &requestJson, Control &ctl)
         return error(std::string("invalid JSON: ") + err.c_str());
     std::string cmd = req["cmd"] | "";
     JsonDocument res;
+    // ArduinoJson (configured as on the device) caps strings at 65535
+    // characters, so potentially large values are appended after serialization.
+    std::vector<std::pair<const char *, std::string>> large;
     res["ok"] = true;
     if (req["id"].is<JsonVariantConst>())
         res["id"] = req["id"];
@@ -215,7 +249,7 @@ std::string handle(const std::string &requestJson, Control &ctl)
         }
         else
         {
-            res["png_base64"] = base64(png.data(), png.size());
+            large.emplace_back("png_base64", base64(png.data(), png.size()));
         }
         res["width"] = img.w;
         res["height"] = img.h;
@@ -250,7 +284,7 @@ std::string handle(const std::string &requestJson, Control &ctl)
         size_t since = req["since"] | 0;
         if (since > log.size())
             since = log.size();
-        res["text"] = log.substr(since);
+        large.emplace_back("text", log.substr(since));
         res["next"] = log.size();
     }
     else if (cmd == "get_refresh_events")
@@ -312,8 +346,14 @@ std::string handle(const std::string &requestJson, Control &ctl)
         return error("unknown cmd '" + cmd + "'");
     }
 
+    if (res.overflowed())
+        return error("response too large: a value exceeds the JSON document limits");
     std::string out;
     serializeJson(res, out);
+    out.pop_back(); // closing brace
+    for (const auto &kv : large)
+        out += ",\"" + std::string(kv.first) + "\":" + jsonString(kv.second);
+    out += "}";
     return out;
 }
 

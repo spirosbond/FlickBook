@@ -41,6 +41,21 @@ def test_screenshot_inline_png_matches_hash(twin, tmp_path):
     assert set(img.pixels) <= {0, 255}  # 1-bit mode renders pure black/white
 
 
+def test_large_values_are_not_dropped(twin, tmp_path):
+    # Ghosted pages compress poorly, and serial logs keep growing: both exceed
+    # ArduinoJson's 65535-character string limit and must still be returned.
+    twin.tap(100, 680)
+    twin.swipe("left")
+    twin.swipe("left")
+    res = twin.call("screenshot")
+    assert len(res["png_base64"]) > 65535
+    assert twin.screenshot() == read_png(twin.screenshot(tmp_path / "ghosted.png"))
+    while twin.get_state()["serial_bytes"] <= 65535:
+        twin.tap(40, 980)
+        twin.tap(100, 680)
+    assert len(twin.serial_log()) == twin.get_state()["serial_bytes"]
+
+
 def test_get_pixels_reads_header_bar(twin):
     rows = twin.call("get_pixels", x=0, y=0, w=4, h=4)["rows"]
     assert len(rows) == 4 and all(len(r) == 4 for r in rows)

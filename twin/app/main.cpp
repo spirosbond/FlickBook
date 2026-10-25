@@ -87,6 +87,7 @@ void usage()
             "  --psram BYTES          PSRAM size cap for single allocations (default 4194304)\n"
             "  --no-touch             touchscreen.init() fails\n"
             "  --no-ghosting | --no-refresh-time   panel model switches\n"
+            "  --no-refresh-flash     viewers: no black/white flash on full refreshes\n"
             "  --serial-log FILE      also write serial output to FILE\n"
             "  --quiet                do not echo serial output to stderr\n",
             TWIN_GRAYSCALE);
@@ -154,6 +155,8 @@ bool parseArgs(int argc, char **argv, Options &o)
             c.ghosting = false;
         else if (a == "--no-refresh-time")
             c.simulate_refresh_time = false;
+        else if (a == "--no-refresh-flash")
+            c.refresh_flash = false;
         else if (a == "--serial-log")
             c.serial_log_path = next("--serial-log");
         else if (a == "--quiet")

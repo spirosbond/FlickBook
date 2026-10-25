@@ -11,7 +11,9 @@
 //   Esc / Q             quit
 #include <SDL.h>
 
+#include <algorithm>
 #include <string>
+#include <vector>
 
 #include "agent.h"
 #include "http.h"
@@ -63,6 +65,32 @@ int runSdlWindow(float scale, bool &resetRequested, http::Listener *httpAgent)
         s.y[0] = (uint16_t)py;
         touchEnqueue(s);
     };
+
+    // Full refreshes call this before the new image is applied; input that
+    // arrives meanwhile stays queued until the refresh completes.
+    panel::setFlashPresenter([&](const std::vector<panel::FlashPhase> &phases) {
+        if (!tex || showFb)
+            return;
+        panel::Image solid;
+        solid.w = texW;
+        solid.h = texH;
+        for (const auto &ph : phases)
+        {
+            solid.gray.assign((size_t)texW * texH, (uint8_t)ph.level);
+            std::vector<uint8_t> rgb = panel::logicalRgb(solid, showLight);
+            SDL_UpdateTexture(tex, nullptr, rgb.data(), texW * 3);
+            SDL_RenderClear(ren);
+            SDL_RenderCopy(ren, tex, nullptr, nullptr);
+            SDL_RenderPresent(ren);
+            const uint32_t end = SDL_GetTicks() + ph.ms;
+            for (uint32_t now = SDL_GetTicks(); now < end; now = SDL_GetTicks())
+            {
+                SDL_PumpEvents();
+                SDL_Delay(std::min<uint32_t>(10, end - now));
+            }
+        }
+        shownFrame = ~0ull;
+    });
 
     bool running = true;
     while (running && !ctl.quit && !ctl.reset)
@@ -163,6 +191,7 @@ int runSdlWindow(float scale, bool &resetRequested, http::Listener *httpAgent)
         SDL_RenderPresent(ren);
     }
     resetRequested = ctl.reset;
+    panel::setFlashPresenter(nullptr);
     if (tex)
         SDL_DestroyTexture(tex);
     SDL_DestroyRenderer(ren);

@@ -7,6 +7,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -47,6 +48,23 @@ void nativeToLogical(int rx, int ry, int &lx, int &ly);
 
 uint64_t frameCounter(); // increments every time the panel changes
 void bumpFrame();
+
+// Visible phases of a full refresh (viewer-only; the panel itself changes
+// atomically). level: 255 = white, 0 = black, -1 = the new image.
+struct FlashPhase
+{
+    int level;
+    uint32_t ms;
+};
+// Phases for display mode 0 (1-bit) or 1 (3-bit), summing to the configured
+// full-refresh time. Empty when the flash is disabled.
+std::vector<FlashPhase> fullRefreshPhases(uint8_t mode);
+std::string fullRefreshPhasesJson(); // {"1bit":[[level,ms],...],"3bit":[...]} or "null"
+// Called during a full refresh, before viewers show the new image, with the
+// phases preceding it. Viewers use it to show the flash live (SDL window).
+using FlashPresenter = std::function<void(const std::vector<FlashPhase> &)>;
+void setFlashPresenter(FlashPresenter presenter);
+const FlashPresenter &flashPresenter();
 
 uint64_t hash(const Image &img); // FNV-1a 64 of the gray pixels + dimensions
 std::string hex64(uint64_t v);

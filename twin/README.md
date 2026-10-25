@@ -103,6 +103,7 @@ Useful options (run `flicktwin --help` to see them all):
 | `--psram BYTES` | cap on a single PSRAM allocation; larger `ps_malloc` calls return NULL |
 | `--no-touch` | `touchscreen.init()` fails |
 | `--no-ghosting`, `--no-refresh-time` | panel model switches |
+| `--no-refresh-flash` | no black/white flash on full refreshes in the window and browser viewer |
 
 The firmware's upload web server works for real. In Settings → tab 3, toggle
 "Web server", then open `http://127.0.0.1:8080/`. While WiFi is on, the twin

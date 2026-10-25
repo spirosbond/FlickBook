@@ -1,6 +1,8 @@
 // FlickBook digital twin - Inkplate 6 FLICK board driver model and panel.
 #include "Inkplate.h"
 
+#include <algorithm>
+#include <chrono>
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
@@ -37,6 +39,58 @@ void setRotation(uint8_t r) { g_rotation = r & 3; }
 uint8_t rotation() { return g_rotation; }
 uint64_t frameCounter() { return g_frame; }
 void bumpFrame() { ++g_frame; }
+
+// Full-refresh clear sequence of the Inkplate 6 FLICK board driver
+// (Inkplate6FLICKDriver.cpp, display1b/display3b), in panel frames:
+//   clean(0,5) white 5 | clean(1,15) black 15 | clean(0,15) white 15 |
+//   clean(1,15) black 15 | clean(0,15) white 15
+// Each clean(2,1) after a phase does not drive the pixels and is merged into
+// the phase before it. The new image then takes 6 frames in 1-bit mode
+// (4 black-pixel + 1 black/white + 1 discharge) and 10 frames in 3-bit mode
+// (9 grayscale + 1 HiZ).
+std::vector<FlashPhase> fullRefreshPhases(uint8_t mode)
+{
+    if (!config().refresh_flash)
+        return {};
+    const int levels[] = {255, 0, 255, 0, 255, -1};
+    const uint32_t frames[] = {5, 16, 16, 16, 16, mode == 0 ? 6u : 10u};
+    const uint32_t total = mode == 0 ? config().full_refresh_ms : config().full_refresh_3bit_ms;
+    uint32_t sum = 0;
+    for (uint32_t f : frames)
+        sum += f;
+    std::vector<FlashPhase> phases;
+    uint32_t used = 0;
+    for (int i = 0; i < 6; ++i)
+    {
+        uint32_t ms = i == 5 ? total - used : total * frames[i] / sum;
+        used += ms;
+        phases.push_back({levels[i], ms});
+    }
+    return phases;
+}
+
+std::string fullRefreshPhasesJson()
+{
+    if (!config().refresh_flash)
+        return "null";
+    std::string out = "{";
+    for (uint8_t mode = 0; mode < 2; ++mode)
+    {
+        out += mode ? ",\"3bit\":[" : "\"1bit\":[";
+        auto phases = fullRefreshPhases(mode);
+        for (size_t i = 0; i < phases.size(); ++i)
+            out += (i ? ",[" : "[") + std::to_string(phases[i].level) + "," + std::to_string(phases[i].ms) + "]";
+        out += "]";
+    }
+    return out + "}";
+}
+
+namespace
+{
+FlashPresenter g_presenter;
+}
+void setFlashPresenter(FlashPresenter presenter) { g_presenter = std::move(presenter); }
+const FlashPresenter &flashPresenter() { return g_presenter; }
 
 void registerFramebuffer(const uint8_t **buf1b, const uint8_t **buf3b, const uint8_t *mode)
 {
@@ -332,6 +386,33 @@ void panelPartial1b(const uint8_t *oldBuf, const uint8_t *newBuf, RefreshEvent &
     }
     finishEvent(e, bb);
 }
+
+// Lets a live viewer show the full-refresh flash before it displays the new
+// panel image (the panel model itself is already updated, so refresh events
+// and idle detection are unaffected). Returns the wall-clock time spent.
+uint64_t presentFlash(uint8_t mode)
+{
+    const auto &presenter = panel::flashPresenter();
+    auto phases = panel::fullRefreshPhases(mode);
+    if (!presenter || phases.empty())
+        return 0;
+    phases.pop_back(); // the new image is shown once the panel is updated
+    const auto start = std::chrono::steady_clock::now();
+    presenter(phases);
+    return (uint64_t)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start)
+        .count();
+}
+
+// In realtime mode the presented flash is part of the refresh time.
+void advanceFullRefresh(uint8_t mode, uint64_t presentedMs)
+{
+    if (!config().simulate_refresh_time)
+        return;
+    uint64_t ms = mode == 0 ? config().full_refresh_ms : config().full_refresh_3bit_ms;
+    if (config().realtime)
+        ms -= std::min(ms, presentedMs);
+    advanceMs(ms);
+}
 } // namespace
 
 // ------------------------------------------------------------------ Touch ---
@@ -482,8 +563,7 @@ void EPDDriver::display(bool)
     }
     panel::bumpFrame();
     recordRefresh(e);
-    if (config().simulate_refresh_time)
-        advanceMs(_displayMode == 0 ? config().full_refresh_ms : config().full_refresh_3bit_ms);
+    advanceFullRefresh(_displayMode, presentFlash(_displayMode));
 }
 
 uint32_t EPDDriver::partialUpdate(bool forced, bool)
@@ -513,8 +593,7 @@ uint32_t EPDDriver::partialUpdate(bool forced, bool)
             _partialUpdateCounter = 0;
         panel::bumpFrame();
         recordRefresh(e);
-        if (config().simulate_refresh_time)
-            advanceMs(config().full_refresh_ms);
+        advanceFullRefresh(0, presentFlash(0));
         return 0;
     }
 

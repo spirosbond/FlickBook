@@ -18,7 +18,12 @@ std::string loadViewer()
         return "<html><body><img src='/screen.png'></body></html>";
     std::stringstream ss;
     ss << in.rdbuf();
-    return ss.str();
+    std::string html = ss.str();
+    const std::string marker = "/*TWIN_FLASH*/null";
+    size_t pos = html.find(marker);
+    if (pos != std::string::npos)
+        html.replace(pos, marker.size(), panel::fullRefreshPhasesJson());
+    return html;
 }
 
 void serve(int fd, agent::Control &ctl)

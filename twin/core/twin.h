@@ -29,6 +29,7 @@ struct Config
 
     // Panel model
     bool ghosting = true; // partial updates leave faint residue of pixels that went black -> white
+    bool refresh_flash = true; // viewers animate the driver's full-refresh clear sequence
 
     // Serial
     bool echo_serial = true;

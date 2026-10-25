@@ -61,7 +61,7 @@ refresh, serial output or touch for 400 ms of virtual time.
 | `touch` | `samples: [{x,y,down,t}]` | raw touch-controller samples |
 | `advance_time` | `ms` | run `loop()` for `ms` of virtual time |
 | `run_until_idle` | `[quiet_ms, max_ms]` | |
-| `screenshot` | `[path]`, `[source=panel\|framebuffer]`, `[frontlight]` | PNG file, or base64 `png` |
+| `screenshot` | `[path]`, `[source=panel\|framebuffer]`, `[frontlight]` | PNG file, or base64 `png_base64` |
 | `get_framebuffer_hash` | `[source]` | `hash` |
 | `get_pixels` | `x, y, w, h` | gray values 0 (black) … 255 (white) |
 | `get_serial_log` | `[since]` | `log`, `next` |
@@ -157,7 +157,7 @@ example `-- --battery 3.3`.
 | Area | Modelled | Not modelled or approximate |
 |------|----------|----------------------------|
 | Firmware logic | All application sources, compiled unmodified, plus the real ArduinoJson, tinyxml2, unzipLIB, JPEGDEC (one host-only patch, see Firmware-side notes), qrcode and Inkplate graphics/image decoders | ESP32 compiler differences (int sizes, `char` signedness, `-O2` vs. host UB) |
-| Display | 1024×758 panel, rotation, 1-bit and 3-bit modes; full and partial refresh semantics; `setFullUpdateThreshold`; optional ghosting after partial updates; approximate refresh durations (1.1 s / 1.7 s / 0.3 s) added to the virtual clock | Real waveforms, temperature dependence, exact gray levels and timing, TPS65186 power sequencing |
+| Display | 1024×758 panel, rotation, 1-bit and 3-bit modes; full and partial refresh semantics; `setFullUpdateThreshold`; optional ghosting after partial updates; approximate refresh durations (1.1 s / 1.7 s / 0.3 s) added to the virtual clock; full refreshes flash white/black/white/black/white in the window and browser viewer (driver clear sequence; screenshots and the API never show it) | Real waveforms, temperature dependence, exact gray levels and timing, TPS65186 power sequencing |
 | Touch | `touchscreen.init/available/getData`, `tsAvailable/tsGetData`, taps, swipes, long presses, raw samples at a 15 ms report rate | Controller quirks (noise, multi-touch ghosts, report-rate jitter, palm rejection) |
 | Frontlight | `setState`, `setBrightness(0..63)` as a warm overlay in screenshots | Light uniformity, PWM behaviour |
 | Battery | `readBattery()` returns a settable voltage | Discharge curve, ADC noise |
