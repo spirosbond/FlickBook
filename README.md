@@ -1,4 +1,5 @@
 <p float="left" align="center">
+   <img src="media/logos/logo.png" alt="Reading Page" width="100"/>
    <img src="media/library-mockup.png" alt="Reading Page" width="100"/>
    <img src="media/library-black-mockup.png" alt="Reading Page" width="100"/>
    <img src="media/reading-page-front-black-mockup.png" alt="Library" width="100"/>
