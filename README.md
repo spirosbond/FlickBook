@@ -166,8 +166,9 @@ The project leverages the InkPlate 6 Flick's excellent recycled e-paper displays
 ### Developing Without a Device (Digital Twin)
 The [`twin/`](twin/README.md) directory builds the unmodified firmware for your PC. It simulates the e-paper panel, touch, frontlight, battery, SD card and web server. Run it in a window, headless, in the browser, or drive it from scripts and AI agents. It includes deterministic scenario tests with golden images. See [`twin/README.md`](twin/README.md) and [`twin/AGENTS.md`](twin/AGENTS.md).
 
-<img src="media/flickbook-twin.png" alt="Flickbook Twin" width="900"/>
-
+<p float="left" align="center">
+   <img src="media/flickbook-twin.png" alt="Flickbook Twin" width="900"/>
+</p>
 
 ## Future Development Roadmap
 
