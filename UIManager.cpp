@@ -28,8 +28,8 @@ void UIManager::init()
 {
   display->begin();
   setFont(FONT_PRIM, FONT_SIZE_DEFAULT);
-  display->setTextWrap(false); // Important for proper rendering of long text
-  // display->setFullUpdateThreshold(PARTIAL_UPDATE_LIMIT_N);
+  display->setTextWrap(false);        // Important for proper rendering of long text
+  display->setFullUpdateThreshold(0); // Set to zero to disable the built in Inkplate's logic to refresh every 10 partial updates
   // Try touchscreen initialization up to 5 times
   bool tsInitialized = false;
   for (int i = 0; i < 5; i++)
