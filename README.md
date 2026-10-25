@@ -1,3 +1,13 @@
+<p float="left" align="center">
+   <img src="media/library-mockup.png" alt="Reading Page" width="100"/>
+   <img src="media/library-black-mockup.png" alt="Reading Page" width="100"/>
+   <img src="media/reading-page-front-black-mockup.png" alt="Library" width="100"/>
+   <img src="media/reading-page-front-mockup.png" alt="Library" width="100"/>
+   <img src="media/reading page-1-mockup.png" alt="Library" width="100"/>
+   <img src="media/settings-1-mockup.png" alt="Settings" width="100"/>
+   <img src="media/settings-webserver-mockup.png" alt="Settings" width="100"/>
+</p>
+
 # FlickBook: DIY Open-Source eBook Reader with InkPlate 6 Flick
 
 I would like to introduce you to FlickBook! Build your own fully-featured eBook reader from scratch using an InkPlate 6 Flick development board. This project delivers native EPUB parsing, gesture-based navigation, battery-powered operation, and complete library management - all with open-source hardware and software!
@@ -54,7 +64,7 @@ The project leverages the InkPlate 6 Flick's excellent recycled e-paper displays
 - Settings menu with backlight controls and other features
 - Progress tracking and chapter navigation
 
-<p float="left">
+<p float="left" align="center">
    <img src="media/library-mockup.png" alt="Reading Page" width="400"/>
    <img src="media/library-black-mockup.png" alt="Reading Page" width="400"/>
    <img src="media/reading-page-front-black-mockup.png" alt="Library" width="400"/>
@@ -66,7 +76,7 @@ The project leverages the InkPlate 6 Flick's excellent recycled e-paper displays
 
 ### **Video Demos:**
 
-<p float="left">
+<p float="left" align="center">
    <img src="media/library-reading.gif" alt="Library & Reading" width="300"/>
    <img src="media/dark-mode.gif" alt="Dark Mode" width="300"/>
 </p>
@@ -77,7 +87,7 @@ The project leverages the InkPlate 6 Flick's excellent recycled e-paper displays
 - Touch-responsive screen surface
 - More info [at Inkplate Docs](https://soldered.com/documentation/inkplate/6flick/overview/)
 
-<p float="left">
+<p float="left" align="center">
    <img src="media/ink6-1.jpg" alt="Inkplate 6 Flick" width="400"/>
    <img src="media/ink6-2.jpg" alt="Inkplate 6 Flick" width="400"/>
    <img src="media/ink6-3.jpg" alt="Inkplate 6 Flick" width="400"/>
