@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <string>
 
-void setup(); // provided by ebook_reader.ino
+void setup(); // provided by FlickBook.ino
 void loop();
 
 namespace twin
