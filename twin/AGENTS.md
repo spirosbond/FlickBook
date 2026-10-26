@@ -1,7 +1,7 @@
 # AGENTS.md: developing FlickBook with the digital twin
 
 Use the twin to check every firmware change before it reaches a device. It
-compiles the real firmware sources (`../*.cpp`, `../ebook_reader.ino`)
+compiles the real firmware sources (`../*.cpp`, `../FlickBook.ino`)
 against simulated hardware. Runs are **deterministic**: the same commands
 always produce the same pixels, serial log and refresh events.
 

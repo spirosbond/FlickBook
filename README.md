@@ -137,7 +137,7 @@ The project leverages the InkPlate 6 Flick's excellent recycled e-paper displays
 ### Software Installation
 1. **Download the Source Code**:
    - Clone or download the project repository
-   - Open `ebook_reader.ino` in Arduino IDE
+   - Open `FlickBook.ino` in Arduino IDE
 
 2. **Configure Board Settings**:
    - Select "Soldered Inkplate 6 FLICK" from Tools → Board
@@ -220,7 +220,7 @@ This keeps the project open source while allowing modification, redistribution, 
 
 ## Repository Structure
 
-- `/ebook_reader.ino` - Main Arduino project
+- `/FlickBook.ino` - Main Arduino project
 - `/libs` - Custom library implementations
 - `/docs` - Build guides and technical documentation
 - `/sdcard` - SD Card contents

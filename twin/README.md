@@ -7,7 +7,7 @@ interactively, headless, from scripts, or from AI agents (JSON API, Python
 client, MCP server).
 
 ```
-firmware (*.cpp, ebook_reader.ino)   <- compiled as-is
+firmware (*.cpp, FlickBook.ino)      <- compiled as-is
         │ Arduino / Inkplate / SdFat / WiFi / WebServer APIs
 twin/shim + twin/core                 <- host implementations, virtual clock, panel model
         │

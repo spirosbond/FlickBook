@@ -6,7 +6,7 @@
 #include "Inkplate.h"
 #include "twin.h"
 
-extern Inkplate display; // defined in ebook_reader.ino
+extern Inkplate display; // defined in FlickBook.ino
 
 namespace twin
 {

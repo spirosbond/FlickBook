@@ -15,8 +15,8 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 get_filename_component(FLICKBOOK_DIR "${FLICKBOOK_DIR}" ABSOLUTE)
-if(NOT EXISTS "${FLICKBOOK_DIR}/ebook_reader.ino")
-  message(FATAL_ERROR "FLICKBOOK_DIR=${FLICKBOOK_DIR} does not contain ebook_reader.ino")
+if(NOT EXISTS "${FLICKBOOK_DIR}/FlickBook.ino")
+  message(FATAL_ERROR "FLICKBOOK_DIR=${FLICKBOOK_DIR} does not contain FlickBook.ino")
 endif()
 file(READ "${FLICKBOOK_DIR}/definitions.h" _defs)
 if(NOT _defs MATCHES "#ifndef GRAYSCALE")
@@ -99,10 +99,10 @@ list(REMOVE_ITEM FIRMWARE_CPP "${FLICKBOOK_DIR}/ImageScaler.cpp")
 list(APPEND FIRMWARE_CPP "${JPEG_STAGE}/ImageScaler.cpp")
 
 # The sketch is compiled as C++ through a generated wrapper (like arduino-cli does).
-set(FIRMWARE_INO "${CMAKE_CURRENT_BINARY_DIR}/ebook_reader_ino.cpp")
-file(WRITE "${FIRMWARE_INO}.in" "#include <Arduino.h>\n#include \"${FLICKBOOK_DIR}/ebook_reader.ino\"\n")
+set(FIRMWARE_INO "${CMAKE_CURRENT_BINARY_DIR}/FlickBook_ino.cpp")
+file(WRITE "${FIRMWARE_INO}.in" "#include <Arduino.h>\n#include \"${FLICKBOOK_DIR}/FlickBook.ino\"\n")
 configure_file("${FIRMWARE_INO}.in" "${FIRMWARE_INO}" COPYONLY)
-set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${FLICKBOOK_DIR}/ebook_reader.ino")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${FLICKBOOK_DIR}/FlickBook.ino")
 
 set(TWIN_SOURCES
   core/twin.cpp core/arduino.cpp core/inkplate.cpp core/sdcard.cpp core/http.cpp core/webserver.cpp
