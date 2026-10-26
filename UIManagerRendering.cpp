@@ -130,7 +130,7 @@ void UIManager::renderMainHeader(bool partial_update)
     setFont(FONT_ALT, FONT_SIZE_LARGE);
     display->setTextColor(WHITE);
     display->setCursor(15, 45);
-    display->print("The Best eBook Reader!");
+    display->print(MAIN_HEADER_TITLE);
     drawBattery(true);
 
     display->drawRoundRect(MAIN_HEADER_ITEM_SETTINGS[0], MAIN_HEADER_ITEM_SETTINGS[1], MAIN_HEADER_ITEM_SETTINGS[2], MAIN_HEADER_ITEM_SETTINGS[3], HEADER_ITEM_RADIUS, WHITE); // Arguments are: start X, start Y, size X, size Y, radius, color
