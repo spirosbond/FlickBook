@@ -51,6 +51,29 @@ To build a firmware checkout somewhere else, pass `-DFLICKBOOK_DIR=/path/to/Flic
 To move the twin into its own repository, add FlickBook as a git submodule
 and point `FLICKBOOK_DIR` at it.
 
+### Keeping library versions in sync
+
+The twin does not use the libraries installed by the Arduino IDE. It fetches
+its own copies, pinned in `twin/CMakeLists.txt`. They should match the
+versions used for device builds:
+
+| Library | Version | Twin pin |
+|---|---|---|
+| ArduinoJson | 7.4.3 | tag `v7.4.3` |
+| tinyxml2 | 11.0.0 | tag `11.0.0` |
+| unzipLIB | 1.0.0 | commit `8dc3f97` |
+| InkplateLibrary | 11.2.1 | commit `3c15d32` |
+
+When you update one of these in the Library Manager, change its `GIT_TAG`,
+reconfigure from an empty build directory, then run the API drift check and
+the tests. JPEGDEC and qrcode are compiled from the repository's `libs/`, so
+they need no pin.
+
+The board package (Soldered Inkplate Boards, ESP32 core) is not used by the
+twin: `twin/shim/` replaces the Arduino core, WiFi, WebServer, DNSServer and
+SD. Board updates need no twin change unless the firmware starts using new
+core APIs, which the API drift check reports.
+
 ### Host-only JPEGDEC workaround
 
 `libs/jpeg_inl.h` indexes far out of bounds when skipping progressive JPEG

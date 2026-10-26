@@ -27,18 +27,20 @@ endif()
 # Everything is fetched from source at pinned commits. SOURCE_SUBDIR points to
 # a non-existent directory so FetchContent only downloads (we compile the
 # Arduino libraries ourselves against the shim layer).
+# Keep these in sync with the versions installed by the Arduino IDE Library
+# Manager for device builds (see README "Keeping library versions in sync").
 include(FetchContent)
 set(FETCHCONTENT_QUIET ON)
 FetchContent_Declare(arduinojson
   GIT_REPOSITORY https://github.com/bblanchon/ArduinoJson.git
-  GIT_TAG v7.4.2 GIT_SHALLOW TRUE SOURCE_SUBDIR _none_)
+  GIT_TAG v7.4.3 GIT_SHALLOW TRUE SOURCE_SUBDIR _none_)
 FetchContent_Declare(tinyxml2
   GIT_REPOSITORY https://github.com/leethomason/tinyxml2.git
-  GIT_TAG 10.0.0 GIT_SHALLOW TRUE SOURCE_SUBDIR _none_)
-FetchContent_Declare(unziplib
+  GIT_TAG 11.0.0 GIT_SHALLOW TRUE SOURCE_SUBDIR _none_)
+FetchContent_Declare(unziplib  # 1.0.0
   GIT_REPOSITORY https://github.com/bitbank2/unzipLIB.git
-  GIT_TAG 594a95216d70cb16404c767922cd8aa55e382f66 SOURCE_SUBDIR _none_)
-FetchContent_Declare(inkplate
+  GIT_TAG 8dc3f9748d6ac19c5121c724169c3c70a67659a0 SOURCE_SUBDIR _none_)
+FetchContent_Declare(inkplate  # InkplateLibrary 11.2.1
   GIT_REPOSITORY https://github.com/SolderedElectronics/Inkplate-Arduino-library.git
   GIT_TAG 3c15d3275bb3b5c0d4b0ea8d79d87a8380a94554 SOURCE_SUBDIR _none_)
 FetchContent_Declare(stb
