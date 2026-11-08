@@ -764,40 +764,162 @@ String EpubParser::getCoverPath(String book)
 // nécessaires pour le français) deviennent '?'. Il faut regénérer les polices
 // (Fonts/*.h) avec la plage 0x20-0xFF pour que les glyphes correspondants
 // existent réellement (voir l'outil "font converter" d'Inkplate).
+// Decode UTF-8 and convert European Latin text to the single-byte encoding
+// used by Adafruit GFX fonts. U+00A0..U+00FF are retained as Latin-1 (the
+// primary Amazon font family includes glyphs through 0xFF); Latin Extended
+// letters are transliterated to their closest Latin-1/ASCII equivalent.
+static uint32_t decodeUtf8CodePoint(const String &in, size_t &i)
+{
+    const size_t length = in.length();
+    uint8_t b0 = (uint8_t)in[i++];
+    if (b0 < 0x80)
+        return b0;
+
+    uint32_t cp = 0;
+    size_t extra = 0;
+    if (b0 >= 0xC2 && b0 <= 0xDF)
+    {
+        cp = b0 & 0x1F;
+        extra = 1;
+    }
+    else if (b0 >= 0xE0 && b0 <= 0xEF)
+    {
+        cp = b0 & 0x0F;
+        extra = 2;
+    }
+    else if (b0 >= 0xF0 && b0 <= 0xF4)
+    {
+        cp = b0 & 0x07;
+        extra = 3;
+    }
+    else
+        return '?';
+
+    if (i + extra > length)
+    {
+        i = length;
+        return '?';
+    }
+
+    for (size_t n = 0; n < extra; ++n)
+    {
+        uint8_t b = (uint8_t)in[i];
+        if ((b & 0xC0) != 0x80)
+            return '?';
+        ++i;
+        cp = (cp << 6) | (b & 0x3F);
+    }
+
+    // Reject overlong forms, UTF-16 surrogates and values beyond Unicode.
+    if ((extra == 1 && cp < 0x80) ||
+        (extra == 2 && cp < 0x800) ||
+        (extra == 3 && cp < 0x10000) ||
+        (cp >= 0xD800 && cp <= 0xDFFF) || cp > 0x10FFFF)
+        return '?';
+    return cp;
+}
+
+static char transliterateLatinCodePoint(uint32_t cp)
+{
+    // Latin-1 characters are supported directly by the primary Amazon fonts.
+    if (cp >= 0xA0 && cp <= 0xFF)
+        return (char)cp;
+
+    switch (cp)
+    {
+    case 0x0152: return 'O'; // Œ
+    case 0x0153: return 'o'; // œ
+    case 0x00DF: return 's'; // ß (expanded below by caller)
+    case 0x00C6: return 'A'; // Æ
+    case 0x00E6: return 'a'; // æ
+    case 0x00D8: return 'O'; // Ø
+    case 0x00F8: return 'o'; // ø
+    case 0x0141: return 'L'; // Ł
+    case 0x0142: return 'l'; // ł
+    case 0x0110: return 'D'; // Đ
+    case 0x0111: return 'd'; // đ
+    case 0x00DE: return 'T'; // Þ
+    case 0x00FE: return 't'; // þ
+    case 0x0131: return 'i'; // dotless i
+    case 0x0130: return 'I'; // dotted capital I
+    case 0x0126: return 'H'; // Ħ
+    case 0x0127: return 'h'; // ħ
+    case 0x014A: return 'N'; // Ŋ
+    case 0x014B: return 'n'; // ŋ
+    case 0x017F: return 's'; // long s
+    case 0x20AC: return 'E'; // €
+    case 0x2010: case 0x2011: case 0x2012: case 0x2013: case 0x2014:
+    case 0x2015: case 0x2212: return '-';
+    case 0x2018: case 0x2019: case 0x201A: case 0x201B: return '\'';
+    case 0x201C: case 0x201D: case 0x201E: case 0x201F: return '"';
+    case 0x2026: return '.';
+    case 0x0300: case 0x0301: case 0x0302: case 0x0303:
+    case 0x0304: case 0x0306: case 0x0307: case 0x0308:
+    case 0x030A: case 0x030B: case 0x030C: case 0x0327:
+    case 0x0328: return 0; // Combining diacritic: base letter is already present.
+    default: break;
+    }
+
+    // Most Latin Extended-A/B letters are paired with an unaccented base
+    // letter. This table covers common Central and Eastern European alphabets.
+    switch (cp)
+    {
+    case 0x0100: case 0x0102: case 0x0104: case 0x01CD: case 0x01DE:
+    case 0x01E0: case 0x01FA: return 'A';
+    case 0x0101: case 0x0103: case 0x0105: case 0x01CE: case 0x01DF:
+    case 0x01E1: case 0x01FB: return 'a';
+    case 0x0106: case 0x0108: case 0x010A: case 0x010C: return 'C';
+    case 0x0107: case 0x0109: case 0x010B: case 0x010D: return 'c';
+    case 0x010E: case 0x011A: return 'D';
+    case 0x010F: case 0x011B: return 'd';
+    case 0x0112: case 0x0114: case 0x0116: case 0x0118: case 0x011A: return 'E';
+    case 0x0113: case 0x0115: case 0x0117: case 0x0119: return 'e';
+    case 0x011C: case 0x011E: case 0x0120: case 0x0122: return 'G';
+    case 0x011D: case 0x011F: case 0x0121: case 0x0123: return 'g';
+    case 0x0124: case 0x0126: return 'H';
+    case 0x0125: case 0x0127: return 'h';
+    case 0x0128: case 0x012A: case 0x012C: case 0x012E: case 0x0130: return 'I';
+    case 0x0129: case 0x012B: case 0x012D: case 0x012F: case 0x0131: return 'i';
+    case 0x0134: return 'J'; case 0x0135: return 'j';
+    case 0x0136: return 'K'; case 0x0137: return 'k';
+    case 0x0139: case 0x013B: case 0x013D: case 0x013F: return 'L';
+    case 0x013A: case 0x013C: case 0x013E: case 0x0140: return 'l';
+    case 0x0143: case 0x0145: case 0x0147: return 'N';
+    case 0x0144: case 0x0146: case 0x0148: return 'n';
+    case 0x014C: case 0x014E: case 0x0150: case 0x01D1: return 'O';
+    case 0x014D: case 0x014F: case 0x0151: case 0x01D2: return 'o';
+    case 0x0154: case 0x0156: case 0x0158: return 'R';
+    case 0x0155: case 0x0157: case 0x0159: return 'r';
+    case 0x015A: case 0x015C: case 0x015E: case 0x0160: return 'S';
+    case 0x015B: case 0x015D: case 0x015F: case 0x0161: return 's';
+    case 0x0162: case 0x0164: return 'T';
+    case 0x0163: case 0x0165: return 't';
+    case 0x0168: case 0x016A: case 0x016C: case 0x016E: case 0x0170:
+    case 0x0172: return 'U';
+    case 0x0169: case 0x016B: case 0x016D: case 0x016F: case 0x0171:
+    case 0x0173: return 'u';
+    case 0x0174: return 'W'; case 0x0175: return 'w';
+    case 0x0176: case 0x0178: return 'Y'; case 0x0177: return 'y';
+    case 0x0179: case 0x017B: case 0x017D: return 'Z';
+    case 0x017A: case 0x017C: case 0x017E: return 'z';
+    default: return '?';
+    }
+}
+
 static String utf8ToLatin1(const String &in)
 {
     String out;
     out.reserve(in.length());
-    size_t i = 0;
-    while (i < in.length())
+    for (size_t i = 0; i < in.length();)
     {
-        uint8_t b0 = (uint8_t)in[i];
-        if (b0 < 0x80)
-        {
-            out += (char)b0;
-            i += 1;
-        }
-        else if ((b0 & 0xE0) == 0xC0 && i + 1 < in.length())
-        {
-            uint8_t b1 = (uint8_t)in[i + 1];
-            uint16_t codepoint = ((b0 & 0x1F) << 6) | (b1 & 0x3F);
-            out += (codepoint <= 0xFF) ? (char)codepoint : '?';
-            i += 2;
-        }
-        else if ((b0 & 0xF0) == 0xE0 && i + 2 < in.length())
-        {
-            out += '?'; // point de code > 0xFF (ex: emoji, CJK, etc.), hors Latin-1
-            i += 3;
-        }
-        else if ((b0 & 0xF8) == 0xF0 && i + 3 < in.length())
-        {
-            out += '?';
-            i += 4;
-        }
+        uint32_t cp = decodeUtf8CodePoint(in, i);
+        if (cp == 0x00DF) // German sharp s expands to two displayable letters.
+            out += "ss";
         else
         {
-            // octet de continuation isolé / séquence invalide -> on saute
-            i += 1;
+            char mapped = transliterateLatinCodePoint(cp);
+            if (mapped != 0)
+                out += mapped;
         }
     }
     return out;
