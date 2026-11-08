@@ -870,7 +870,7 @@ static char transliterateLatinCodePoint(uint32_t cp)
     case 0x01E1: case 0x01FB: return 'a';
     case 0x0106: case 0x0108: case 0x010A: case 0x010C: return 'C';
     case 0x0107: case 0x0109: case 0x010B: case 0x010D: return 'c';
-    case 0x010E: case 0x011A: return 'D';
+    case 0x010E: return 'D';
     case 0x010F: case 0x011B: return 'd';
     case 0x0112: case 0x0114: case 0x0116: case 0x0118: case 0x011A: return 'E';
     case 0x0113: case 0x0115: case 0x0117: case 0x0119: return 'e';
