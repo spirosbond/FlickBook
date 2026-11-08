@@ -1,6 +1,249 @@
 A beautiful project made by @spirosbond. https://github.com/spirosbond/FlickBook
+<p float="left" align="center">
+   <img src="media/logos/logo.png" alt="Reading Page" width="100"/>
+   <img src="media/library-mockup.png" alt="Reading Page" width="100"/>
+   <img src="media/library-black-mockup.png" alt="Reading Page" width="100"/>
+   <img src="media/reading-page-front-black-mockup.png" alt="Library" width="100"/>
+   <img src="media/reading-page-front-mockup.png" alt="Library" width="100"/>
+   <img src="media/reading page-1-mockup.png" alt="Library" width="100"/>
+   <img src="media/settings-1-mockup.png" alt="Settings" width="100"/>
+   <img src="media/settings-webserver-mockup.png" alt="Settings" width="100"/>
+</p>
+
+# FlickBook: DIY Open-Source eBook Reader with InkPlate 6 Flick
 
 I only made font for accent for french users, with the use of Claude IA.
 And made a small fix, of a line that disappear at the end of each page.
 
 Have fun.
+## Overall Description and Intent
+
+The goal of this project was to create a truly open and customizable eBook reader that rivals commercial devices while remaining completely hackable and modifiable. Unlike proprietary e-readers that lock you into specific ecosystems, this DIY solution gives you complete control over your digital library and reading experience.
+
+**Key motivations:**
+- Full control over your eBook collection without DRM restrictions
+- Native EPUB support without requiring conversion to other formats
+- Touch-based navigation with intuitive touch gestures
+- Weeks of battery life through efficient e-paper technology
+- Expandable functionality through open-source codebase
+- Utilizing Arduino ESP32 Library
+- Great platform to learn about E-Ink displays and ESP32
+
+The project leverages the InkPlate 6 Flick's excellent recycled e-paper displays combined with custom firmware to create a reading experience optimized for long-form text consumption. The 6-inch display provides ample reading space while maintaining the paper-like appearance that makes e-ink displays so comfortable for extended reading sessions. Other cool hardware features are the adjustable backlight, partial display updates and high resolution of 1024×758 pixels, for confortable reading and image rendering.
+
+## Key Features Showcase
+
+### Current Capabilities
+- **Native EPUB parsing** - No conversion required, reads .epub files directly
+- **Full gesture navigation** - Swipe left/right for pages, up/down for chapters
+- **Complete library management** - Browse, select, and organize your book collection
+- **SD card storage** - Load books via microSD card for massive storage capacity
+- **WiFi connectivity** - Over-the-air library management and book upload
+- **Adjustable backlight** - 64 levels of brightness control for any lighting condition
+- **Progress tracking** - Automatically saves and tracks your reading position
+- **Multiple font size options** - Choose from serif, sans-serif, bookerly, ember fonts in various sizes (only adjustable from code currently)
+- **Light & Dark mode** - Choose between Light mode (closest looking like a book) and Dark mode (great for low light)
+- **Image rendering** - Display book covers, illustrations, and diagrams natively
+- **Automatic pagination** - Smart text flow with chapter detection
+- **Partial screen refresh** - Fast page turns with minimal full screen flicker
+- **Battery monitoring** - Real-time battery level display
+- **Battery charging** - Built in charging capability
+- **Automatic EPUB indexing** - Fast navigation and page caching
+- **3-D Printable Case** - Case designed and provided for free from Inkplate
+- **Image scaling & caching** - Fast book cover rendering by scaling and caching on SD, using the JPEGDEC library
+
+### Performance Highlights
+- **Battery life**: Over 1 week of continuous use
+- **Display**: 6" e-paper with 1024×758 pixel resolution
+- **Refresh rate**: Under 1 second for page turns
+- **Storage**: Virtually unlimited via microSD cards
+- **Icons**: Support for Icon rendering for enhanced UI experience
+- **Language support**: English characters (with plans for expansion)
+
+## Images and Videos Section
+
+### **FlickBook Interface:**
+- Main library browser showing book collection
+- Reading interface with text and image rendering
+- Settings menu with backlight controls and other features
+- Progress tracking and chapter navigation
+
+<p float="left" align="center">
+   <img src="media/library-mockup.png" alt="Reading Page" width="400"/>
+   <img src="media/library-black-mockup.png" alt="Reading Page" width="400"/>
+   <img src="media/reading-page-front-black-mockup.png" alt="Library" width="400"/>
+   <img src="media/reading-page-front-mockup.png" alt="Library" width="400"/>
+   <img src="media/reading page-1-mockup.png" alt="Library" width="400"/>
+   <img src="media/settings-1-mockup.png" alt="Settings" width="400"/>
+   <img src="media/settings-webserver-mockup.png" alt="Settings" width="400"/>
+</p>
+
+### **Video Demos:**
+
+<p float="left" align="center">
+   <img src="media/library-reading.gif" alt="Library & Reading" width="300"/>
+   <img src="media/dark-mode.gif" alt="Dark Mode" width="300"/>
+</p>
+
+### **Hardware Overview:**
+- InkPlate 6 Flick board with e-paper display
+- SD card slot and battery connection
+- Touch-responsive screen surface
+- More info [at Inkplate Docs](https://soldered.com/documentation/inkplate/6flick/overview/)
+
+<p float="left" align="center">
+   <img src="media/ink6-1.jpg" alt="Inkplate 6 Flick" width="400"/>
+   <img src="media/ink6-2.jpg" alt="Inkplate 6 Flick" width="400"/>
+   <img src="media/ink6-3.jpg" alt="Inkplate 6 Flick" width="400"/>
+</p>
+
+## Components List
+
+### Core Hardware
+- **InkPlate 6 Flick Development Board** - Main processing unit with ESP32 and 6" e-paper display
+- **MicroSD Card** - For book storage (32GB+ recommended)
+- **Lithium Battery** - 3.7V LiPo battery for portable operation
+- **USB-C Cable** - For charging and programming
+
+### Optional Accessories
+- **3D Printed Case** - Protective enclosure (STL files can be created)
+- **MicroSD Card Reader** - For transferring books from computer
+
+### Development Tools
+- **Arduino IDE** - Primary development environment
+- **USB-C Cable** - For code upload and debugging
+
+## Getting Started - Build Your Own
+
+### Prerequisites
+1. **Install Arduino IDE** (latest version recommended)
+2. **Add InkPlate Board Support**:
+   - Follow their [Quick Start Guide here](https://soldered.com/documentation/inkplate/6flick/quick-start-guide/)
+
+3. **Install Required Libraries**:
+   - Inkplate Arduino Library (via Library Manager)
+   - TinyXML2 Library (for EPUB parsing)
+   - ArduinoJson Library (for metadata handling)
+   - unzipLIB Library (for handling .zip and epub files)
+
+### Hardware Setup
+1. **Prepare the InkPlate 6 Flick**:
+   - Connect lithium battery (if using battery power)
+   - Insert microSD card with EPUB files
+   - Connect USB-C for initial programming
+
+2. **Load Books**:
+   - Copy the contents of the sdcard/ folder to the root of the microSD card
+   - Copy .epub files to a folder called "books" in the root directory of your microSD card
+   - Organize in folders if desired (library will scan recursively)
+
+### Software Installation
+1. **Download the Source Code**:
+   - Clone or download the project repository
+   - Open `FlickBook.ino` in Arduino IDE
+
+2. **Configure Board Settings**:
+   - Select "Soldered Inkplate 6 FLICK" from Tools → Board
+   - Choose appropriate COM port
+   - Set upload speed to 921600 baud
+
+3. **Compile and Upload**:
+   - Click Upload to flash firmware to device
+   - Monitor serial output for debugging info
+
+### First Boot
+1. Power on the device - you should see loading screen
+2. Main library will display available books from SD card
+3. Touch a book title to begin reading
+4. Use gestures to navigate:
+   - Swipe right: Next page
+   - Swipe left: Previous page
+   - Swipe down: Next section
+   - Swipe up: Previous section
+   - Tap menu area: Access settings
+
+### Customization Options
+- Add/Modify font sizes and families in `UIManager.cpp`
+- Adjust gesture sensitivity in touch handling code
+- Add new features by extending the existing modules
+
+### Developing Without a Device (Digital Twin)
+The [`twin/`](twin/README.md) directory builds the unmodified firmware for your PC. It simulates the e-paper panel, touch, frontlight, battery, SD card and web server. Run it in a window, headless, in the browser, or drive it from scripts and AI agents. It includes deterministic scenario tests with golden images. See [`twin/README.md`](twin/README.md) and [`twin/AGENTS.md`](twin/AGENTS.md).
+
+<p float="left" align="center">
+   <img src="media/flickbook-twin.png" alt="Flickbook Twin" width="900"/>
+</p>
+
+## Future Development Roadmap
+
+### Software Improvements Ideas
+- [x] **WiFi connectivity** - Over-the-air library management and book upload
+- [x] **Book Cover Grid view** - Library overview grid with book cover rendering
+- **Enhanced user settings** - More customization options
+- **Reading statistics** - Track reading speed, time spent, books completed
+- **Note-taking system** - Highlight text and add personal annotations
+- **Hyperlink support** - Chapter-to-chapter navigation within books
+- **Multi-language support** - Unicode character handling for international texts
+- **Advanced search** - Full-text search within books and library
+
+### Hardware Improvement Ideas
+- [x] Custom case for InkPlate Board with minimal bezels
+- Custom PCB design for even smaller form factor
+- Solar charging integration for indefinite battery life
+- Improved case design with better ergonomics
+
+## Credits and Acknowledgments
+
+### External Libraries and Partners
+- **Soldered Electronics** - For the excellent InkPlate 6 Flick hardware platform and Arduino library support
+- **TinyXML2** by Lee Thomason - Lightweight XML parsing library enabling EPUB file processing
+- **Arduino Community** - For the development environment and extensive documentation
+- **Espressif** - ESP32 microcontroller and development frameworks
+- **JPEGDEC** by Larry Bank - Super optimized JPEG Decoding library
+- **New Case** by ctasos - Minimal bezel case for Inkplate 6 Flick board
+
+### Development Tools
+- **Arduino IDE** - Primary development environment
+- **InkPlate Arduino SDK** - Hardware abstraction and display drivers
+
+### Hardware Reference
+This project is built upon the InkPlate 6 Flick reference design and documentation provided by Soldered Electronics. Their open-hardware approach made this project possible.
+
+### Community Contributions
+Special thanks to the open-source hardware community for inspiration and the existing e-reader projects that paved the way for this implementation.
+
+## License and Open Source
+
+This project is licensed under the **GNU General Public License v3.0 or later**.
+
+- SPDX identifier: **GPL-3.0-or-later**
+- License file: [`LICENSE`](./LICENSE)
+
+This keeps the project open source while allowing modification, redistribution, and commercial use under the terms of the GPL.
+
+## Repository Structure
+
+- `/FlickBook.ino` - Main Arduino project
+- `/libs` - Custom library implementations
+- `/docs` - Build guides and technical documentation
+- `/sdcard` - SD Card contents
+- `/Fonts` - Custom fonts folder
+- `/3D_print_files` - 3D Printing source files
+- `/media` - Screenshots, photos, GIFs and demo videos used in this README
+- `/twin` - Digital twin: host build of the firmware with a simulated Inkplate 6 Flick (see [`twin/README.md`](twin/README.md))
+
+## Get Involved
+
+This project welcomes contributions from the community:
+
+- **Code contributions** - Bug fixes, feature additions, optimizations
+- **Documentation** - Improve build guides, add language translations  
+- **Testing** - Try different EPUB files, report compatibility issues
+- **Hardware mods** - Share case designs, battery upgrades, mounting solutions
+- **Feature requests** - Suggest new capabilities and improvements
+
+Join the growing community of open-source e-reader enthusiasts and help make digital reading more accessible and customizable for everyone!
+
+---
+
+*Ready to build your own? Get started with your custom FlickBook and begin your journey into open-source reading technology!*

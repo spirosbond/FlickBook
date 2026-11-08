@@ -1,0 +1,10 @@
+{
+  "name": "low_battery",
+  "description": "Battery at 3.3 V: the header battery indicator is redrawn on the next screen change.",
+  "steps": [
+    {"cmd": "set_battery", "volts": 3.3},
+    {"cmd": "tap", "x": 662, "y": 30, "comment": "settings gear (re-renders header)"},
+    {"cmd": "tap", "x": 40, "y": 980, "comment": "home"},
+    {"expect": "golden", "name": "library_low_battery"}
+  ]
+}

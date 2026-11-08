@@ -1,0 +1,51 @@
+name: Digital twin
+
+on:
+  push:
+    paths-ignore: ["**.md"]
+  pull_request:
+    paths-ignore: ["**.md"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  twin:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends cmake ninja-build g++ libsdl2-dev
+          python3 -m pip install --user pytest
+
+      - name: API drift check
+        run: python3 twin/tools/check_api.py --build twin/build
+
+      - name: Configure
+        run: cmake -S twin -B twin/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DTWIN_BUILD_GRAYSCALE=ON
+
+      - name: Build (1-bit and 3-bit grayscale)
+        run: cmake --build twin/build
+
+      - name: API drift check (with staged Inkplate sources)
+        run: python3 twin/tools/check_api.py --build twin/build
+
+      - name: Scenario and agent tests
+        working-directory: twin
+        run: python3 -m pytest -q tests
+
+      - name: Headless boot screenshot
+        if: always()
+        run: twin/build/flicktwin --screenshot twin/artifacts/boot.png
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: twin-artifacts
+          path: twin/artifacts/
+          if-no-files-found: ignore

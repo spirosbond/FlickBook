@@ -1,7 +1,9 @@
 #ifndef DEFINITIONS_H
 #define DEFINITIONS_H
 
+#ifndef GRAYSCALE // can be overridden by the build (e.g. the digital twin builds both modes)
 #define GRAYSCALE 0
+#endif
 #define NUMITEMS(arg) ((unsigned int)(sizeof(arg) / sizeof(arg[0])))
 
 #if GRAYSCALE == 1

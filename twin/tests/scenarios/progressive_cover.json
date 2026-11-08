@@ -1,0 +1,17 @@
+{
+  "name": "progressive_cover",
+  "description": "Library thumbnail, cover page and START for a 1400x2128 progressive color JPEG (JPEGDEC skips chroma blocks in grayscale output).",
+  "steps": [
+    {"expect": "serial_contains", "text": "JPEG 1400x2128 -> exact-fit 197x300"},
+    {"cmd": "tap", "x": 630, "y": 250, "comment": "third library entry (Progressive Cover)"},
+    {"expect": "serial_contains", "text": "JPEG 1400x2128 -> 1/4 = 350x532", "scope": "last"},
+    {"expect": "serial_contains", "text": "type: Progressive, subsample: 0x11", "scope": "last"},
+    {"expect": "golden", "name": "progressive_cover"},
+    {"cmd": "tap", "x": 310, "y": 1001, "comment": "START"},
+    {"expect": "serial_contains", "text": "type: Progressive, subsample: 0x11", "scope": "last"},
+    {"expect": "serial_not_contains", "text": "decode failed"},
+    {"expect": "serial_not_contains", "text": "Failed to render image"},
+    {"expect": "golden", "name": "progressive_cover"},
+    {"expect": "no_warnings"}
+  ]
+}

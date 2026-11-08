@@ -85,18 +85,18 @@ const String MENU_ITEM_SHOW_FINISHED_ICON = "eye_icon";
 #define LIST_WIDTH (TOT_W - 4 * LIST_SCROLLBAR_WIDTH)
 #define LIST_ITEM_HEIGHT 100
 #define LIST_ITEM_MAX_CHARS 41
-const int LIST_UP_ARROW_DRAW[][2] = {{TOT_W - 2.5 * LIST_SCROLLBAR_WIDTH + LIST_ARROW_SIZE / 2, LIST_START_Y - LIST_ARROW_SIZE},
-                                     {TOT_W - 10 - 0.5 * LIST_SCROLLBAR_WIDTH, LIST_START_Y - 4},
-                                     {TOT_W - 1.5 * LIST_SCROLLBAR_WIDTH - 20, LIST_START_Y - 4}};
-const int LIST_UP_ARROW_TOUCH[] = {TOT_W - 2.5 * LIST_SCROLLBAR_WIDTH - LIST_ARROW_TOUCH_PADDING_X,
+const int LIST_UP_ARROW_DRAW[][2] = {{TOT_W - 5 * LIST_SCROLLBAR_WIDTH / 2 + LIST_ARROW_SIZE / 2, LIST_START_Y - LIST_ARROW_SIZE},
+                                     {TOT_W - 10 - LIST_SCROLLBAR_WIDTH / 2, LIST_START_Y - 4},
+                                     {TOT_W - 3 * LIST_SCROLLBAR_WIDTH / 2 - 20, LIST_START_Y - 4}};
+const int LIST_UP_ARROW_TOUCH[] = {TOT_W - 5 * LIST_SCROLLBAR_WIDTH / 2 - LIST_ARROW_TOUCH_PADDING_X,
                                    LIST_START_Y - LIST_ARROW_SIZE - LIST_ARROW_TOUCH_PADDING_Y,
                                    LIST_ARROW_SIZE + 2 * LIST_ARROW_TOUCH_PADDING_X,
                                    LIST_ARROW_SIZE + 2 * LIST_ARROW_TOUCH_PADDING_Y};
 
-const int LIST_DOWN_ARROW_DRAW[][2] = {{TOT_W - 2.5 * LIST_SCROLLBAR_WIDTH + LIST_ARROW_SIZE / 2, TOT_H - MENU_ITEM_SIZE - LIST_ARROW_SIZE},
-                                       {TOT_W - 10 - 0.5 * LIST_SCROLLBAR_WIDTH, TOT_H - MENU_ITEM_SIZE - 2 * LIST_ARROW_SIZE + 4},
-                                       {TOT_W - 1.5 * LIST_SCROLLBAR_WIDTH - 20, TOT_H - MENU_ITEM_SIZE - 2 * LIST_ARROW_SIZE + 4}};
-const int LIST_DOWN_ARROW_TOUCH[] = {TOT_W - 2.5 * LIST_SCROLLBAR_WIDTH - LIST_ARROW_TOUCH_PADDING_X,
+const int LIST_DOWN_ARROW_DRAW[][2] = {{TOT_W - 5 * LIST_SCROLLBAR_WIDTH / 2 + LIST_ARROW_SIZE / 2, TOT_H - MENU_ITEM_SIZE - LIST_ARROW_SIZE},
+                                       {TOT_W - 10 - LIST_SCROLLBAR_WIDTH / 2, TOT_H - MENU_ITEM_SIZE - 2 * LIST_ARROW_SIZE + 4},
+                                       {TOT_W - 3 * LIST_SCROLLBAR_WIDTH / 2 - 20, TOT_H - MENU_ITEM_SIZE - 2 * LIST_ARROW_SIZE + 4}};
+const int LIST_DOWN_ARROW_TOUCH[] = {TOT_W - 5 * LIST_SCROLLBAR_WIDTH / 2 - LIST_ARROW_TOUCH_PADDING_X,
                                      TOT_H - MENU_ITEM_SIZE - 2 * LIST_ARROW_SIZE - LIST_ARROW_TOUCH_PADDING_Y,
                                      LIST_ARROW_SIZE + 2 * LIST_ARROW_TOUCH_PADDING_X,
                                      LIST_ARROW_SIZE + 2 * LIST_ARROW_TOUCH_PADDING_Y};
@@ -112,6 +112,7 @@ const int HEADER[] = {0, 0, TOT_W, HEADER_H};
 #define HEADER_ITEM_SIZE (HEADER_H - 4)
 #define HEADER_ITEM_RADIUS 15
 #define HEADER_ICON_SIZE 48
+#define MAIN_HEADER_TITLE "FlickBook"
 const int MAIN_HEADER_ITEM_SETTINGS[] = {TOT_W - HEADER_ITEM_SIZE - ICON_BATTERY_W - 5, 0, HEADER_ITEM_SIZE - 1, HEADER_ITEM_SIZE};
 const String MAIN_HEADER_ITEM_ICON[] = {"settings_icon"};
 const int READING_HEADER_ITEM_RELOAD[] = {TOT_W - HEADER_ITEM_SIZE - ICON_BATTERY_W - 5, 0, HEADER_ITEM_SIZE - 1, HEADER_ITEM_SIZE};

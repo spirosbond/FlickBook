@@ -1,0 +1,10 @@
+{
+  "name": "no_sd_card",
+  "description": "Fault injection: missing SD card.",
+  "twin": {"args": ["--no-sd-card"]},
+  "steps": [
+    {"cmd": "run_until_idle", "max_ms": 5000},
+    {"expect": "serial_not_contains", "text": "SD Card initialized"},
+    {"expect": "golden", "name": "no_sd_card"}
+  ]
+}

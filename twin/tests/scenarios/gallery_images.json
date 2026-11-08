@@ -1,0 +1,12 @@
+{
+  "name": "gallery_images",
+  "description": "Open the gallery book: the cover and an inline JPEG are decoded and drawn without errors.",
+  "steps": [
+    {"cmd": "tap", "x": 330, "y": 250, "comment": "second library entry (Twin Gallery)"},
+    {"expect": "golden", "name": "gallery_cover"},
+    {"cmd": "swipe", "direction": "left"},
+    {"expect": "serial_not_contains", "text": "Failed to render image"},
+    {"expect": "golden", "name": "gallery_plate"},
+    {"expect": "no_warnings"}
+  ]
+}

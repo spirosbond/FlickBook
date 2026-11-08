@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>FlickBook twin</title>
+<style>
+  html, body { height: 100%; }
+  body { font-family: system-ui, sans-serif; background: #333; color: #eee; margin: 0; display: flex; gap: 16px; padding: 16px; box-sizing: border-box; overflow: hidden; }
+  #panel { display: block; background: #fff; cursor: crosshair; user-select: none; -webkit-user-drag: none; max-height: calc(100vh - 32px); }
+  #wrap { position: relative; align-self: flex-start; }
+  #flash { position: absolute; inset: 0; display: none; pointer-events: none; }
+  #side { min-width: 260px; flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+  #side h3 { margin: 0; }
+  button { margin: 2px; }
+  pre { white-space: pre-wrap; background: #222; padding: 6px; margin: 0; overflow: auto; }
+  #state { flex: 0 1 auto; max-height: 40%; }
+  #log { flex: 1 1 0; min-height: 0; }
+</style>
+</head>
+<body>
+<div id="wrap"><img id="panel" src="/screen.png" draggable="false" alt="e-paper panel"><div id="flash"></div></div>
+<div id="side">
+  <h3>FlickBook digital twin</h3>
+  <div>
+    <button data-dir="left">swipe ←</button><button data-dir="right">swipe →</button>
+    <button data-dir="up">swipe ↑</button><button data-dir="down">swipe ↓</button>
+  </div>
+  <div>
+    <label><input type="checkbox" id="fl"> show frontlight</label>
+    <label><input type="checkbox" id="fb"> show framebuffer (not yet refreshed)</label>
+  </div>
+  <div>battery V <input id="bat" type="number" step="0.05" value="4.05" style="width:5em"> <button id="setbat">set</button></div>
+  <div><button id="idle">run until idle</button> <button id="reset">reset</button></div>
+  <pre id="state"></pre>
+  <pre id="log"></pre>
+</div>
+<script>
+const img = document.getElementById('panel');
+// Full-refresh flash phases [[level, ms], ...] per display mode, injected by
+// the twin when serving this page (null when disabled: --no-refresh-flash).
+const FLASH = /*TWIN_FLASH*/null;
+let frame = -1, logNext = 0, down = null, refreshes = -1, busy = false, pending = false;
+
+async function cmd(o) {
+  const r = await fetch('/api/cmd', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(o) });
+  return r.json();
+}
+function toPanel(ev) {
+  const r = img.getBoundingClientRect();
+  return [Math.round((ev.clientX - r.left) * img.naturalWidth / r.width),
+          Math.round((ev.clientY - r.top) * img.naturalHeight / r.height)];
+}
+img.addEventListener('mousedown', ev => { down = { p: toPanel(ev), t: performance.now() }; ev.preventDefault(); });
+img.addEventListener('mouseup', async ev => {
+  if (!down) return;
+  const [x1, y1] = toPanel(ev), [x0, y0] = down.p, held = performance.now() - down.t;
+  down = null;
+  if (Math.hypot(x1 - x0, y1 - y0) > 40) await cmd({ cmd: 'swipe', x0, y0, x1, y1, duration_ms: 150 });
+  else if (held > 800) await cmd({ cmd: 'long_press', x: x0, y: y0, hold_ms: Math.round(held) });
+  else await cmd({ cmd: 'tap', x: x0, y: y0 });
+  refresh(true);
+});
+document.querySelectorAll('[data-dir]').forEach(b =>
+  b.onclick = async () => { await cmd({ cmd: 'swipe', direction: b.dataset.dir }); refresh(true); });
+document.getElementById('setbat').onclick = () => cmd({ cmd: 'set_battery', volts: parseFloat(document.getElementById('bat').value) });
+document.getElementById('idle').onclick = async () => { await cmd({ cmd: 'run_until_idle' }); refresh(true); };
+document.getElementById('reset').onclick = async () => { await cmd({ cmd: 'reset' }); frame = -1; refreshes = -1; logNext = 0; document.getElementById('log').textContent = ''; setTimeout(() => refresh(true), 1500); };
+document.getElementById('fl').onchange = () => refresh(true);
+document.getElementById('fb').onchange = () => refresh(true);
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function loadPanel() {
+  const q = new URLSearchParams({ t: Date.now() });
+  if (document.getElementById('fl').checked) q.set('frontlight', '1');
+  if (document.getElementById('fb').checked) q.set('source', 'framebuffer');
+  return new Promise(r => { img.onload = img.onerror = r; img.src = '/screen.png?' + q; });
+}
+// Replays the driver's clear sequence for the latest full refresh since `since`.
+async function playFlash(since) {
+  const r = await cmd({ cmd: 'get_refresh_events', since });
+  const full = (r.events || []).filter(e => e.kind === 'full' || e.kind === 'partial_promoted_full').pop();
+  if (!full || document.getElementById('fb').checked) return false;
+  const el = document.getElementById('flash');
+  for (const [level, ms] of FLASH[full.mode]) {
+    if (level < 0) break;
+    el.style.background = level ? '#fff' : '#000';
+    el.style.display = 'block';
+    await sleep(ms);
+  }
+  await loadPanel();
+  el.style.display = 'none';
+  return true;
+}
+
+async function refresh(force) {
+  if (busy) { pending = true; return; }
+  busy = true;
+  try {
+    const s = await (await fetch('/api/state')).json();
+    document.getElementById('state').textContent = JSON.stringify(s, null, 1);
+    const flashed = FLASH && refreshes >= 0 && s.refresh_count > refreshes && await playFlash(refreshes + 1);
+    refreshes = s.refresh_count;
+    if (force || s.frame !== frame) {
+      frame = s.frame;
+      if (!flashed) loadPanel();
+    }
+    const l = await cmd({ cmd: 'get_serial_log', since: logNext });
+    if (l.ok && l.text) {
+      logNext = l.next;
+      const el = document.getElementById('log');
+      // Follow new output only while scrolled to the bottom.
+      const follow = el.scrollHeight - el.scrollTop - el.clientHeight < 8;
+      const top = el.scrollTop;
+      el.textContent = (el.textContent + l.text).slice(-200000);
+      el.scrollTop = follow ? el.scrollHeight : top;
+    }
+  } catch (e) { /* twin restarting */ }
+  finally {
+    busy = false;
+    if (pending) { pending = false; refresh(true); }
+  }
+}
+setInterval(refresh, 500);
+refresh(true);
+</script>
+</body>
+</html>

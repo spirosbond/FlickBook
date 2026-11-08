@@ -1,0 +1,12 @@
+{
+  "name": "settings_dark_mode",
+  "description": "Toggle dark mode in settings. KNOWN FIRMWARE BUG: UIManager::clearDisplay() memsets TOT_W*TOT_H bytes (768x1024) into the 758x1024 framebuffer, writing past _partial. The twin's guard bytes catch it; when the firmware is fixed, change the expectation to no_warnings.",
+  "steps": [
+    {"cmd": "tap", "x": 662, "y": 30, "comment": "settings gear"},
+    {"expect": "golden", "name": "settings"},
+    {"cmd": "tap", "x": 670, "y": 450, "comment": "Dark Mode toggle"},
+    {"expect": "serial_contains", "text": "DarkMode", "scope": "last"},
+    {"expect": "golden", "name": "settings_dark"},
+    {"expect": "warning_contains", "text": "framebuffer overrun"}
+  ]
+}
